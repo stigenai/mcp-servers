@@ -1,0 +1,42 @@
+name: mcp-playwright
+type: node
+version: 1.0.0
+description: "MCP server for browser automation and web scraping with Playwright"
+base_image: ../base/Dockerfile.node
+entry_command: "npx @microsoft/mcp-playwright"
+author: "Microsoft"
+repository: "https://github.com/microsoft/playwright-mcp"
+
+environment:
+  - name: MCP_PORT
+    description: "Port for the MCP server to listen on"
+    default: "3000"
+    required: false
+    secret: false
+  - name: HEADLESS
+    description: "Run browser in headless mode"
+    default: "true"
+    required: false
+    secret: false
+  - name: BROWSER_TYPE
+    description: "Browser to use (chromium, firefox, webkit)"
+    default: "chromium"
+    required: false
+    secret: false
+  - name: TIMEOUT
+    description: "Default timeout for operations in milliseconds"
+    default: "30000"
+    required: false
+    secret: false
+    
+resources:
+  cpu: 0.5
+  memory: 512
+  
+capabilities:
+  - "browser/navigate"
+  - "browser/screenshot"
+  - "browser/evaluate"
+  - "browser/click"
+  - "browser/type"
+  - "browser/wait"

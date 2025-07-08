@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for Python package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Create app directory
+WORKDIR /app
+
+# Set up MCP server environment
+ENV MCP_PORT=3000
+ENV PYTHONUNBUFFERED=1
+
+# Expose MCP port
+EXPOSE 3000
+
+# Default command (will be overridden by specific servers)
+CMD ["python", "-m", "http.server", "3000"]

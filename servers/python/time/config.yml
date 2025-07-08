@@ -1,0 +1,30 @@
+name: mcp-time
+type: python
+version: 1.0.0
+description: "MCP server that provides time and timezone functionality"
+base_image: ../base/Dockerfile.python
+entry_command: "uvx mcp-servers-time"
+author: "Model Context Protocol"
+repository: "https://github.com/modelcontextprotocol/servers/tree/main/src/time"
+
+environment:
+  - name: MCP_PORT
+    description: "Port for the MCP server to listen on"
+    default: "3000"
+    required: false
+    secret: false
+  - name: TZ
+    description: "Default timezone for time operations"
+    default: "UTC"
+    required: false
+    secret: false
+    
+resources:
+  cpu: 0.25
+  memory: 256
+  
+capabilities:
+  - "time/now"
+  - "time/convert"
+  - "time/zones"
+  - "time/format"

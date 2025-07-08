@@ -1,0 +1,23 @@
+{
+  "name": "@stigenio/mcp-servers",
+  "version": "1.0.0",
+  "description": "Docker images for MCP (Model Context Protocol) servers",
+  "private": true,
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "build:all": "./scripts/build-all.sh",
+    "test": "./scripts/test.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stigenio/mcp-servers.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "docker",
+    "containers"
+  ],
+  "author": "Stigen.io",
+  "license": "MIT"
+}
