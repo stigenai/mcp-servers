@@ -71,29 +71,33 @@ jobs:
             fi
           }
           
-          # Update time server
-          echo "Updating time server..."
-          TIME_COMMIT=$(get_latest_commit "https://github.com/modelcontextprotocol/servers/tree/main/src/time" "src/time")
-          jq --arg commit "$TIME_COMMIT" --arg date "$SYNC_DATE" \
-            '.servers.time.gitCommit = $commit | .servers.time.lastSync = $date' \
-            servers/registry.json.tmp > servers/registry.json.tmp2
-          mv servers/registry.json.tmp2 servers/registry.json.tmp
+          # Process each server dynamically from registry
+          echo "Processing servers from registry..."
           
-          # Update playwright server
-          echo "Updating playwright server..."
-          PLAYWRIGHT_COMMIT=$(get_latest_commit "https://github.com/microsoft/playwright-mcp")
-          jq --arg commit "$PLAYWRIGHT_COMMIT" --arg date "$SYNC_DATE" \
-            '.servers.playwright.gitCommit = $commit | .servers.playwright.lastSync = $date' \
-            servers/registry.json.tmp > servers/registry.json.tmp2
-          mv servers/registry.json.tmp2 servers/registry.json.tmp
+          # Get list of supported servers
+          SERVERS=$(jq -r '.servers | to_entries[] | select(.value.supported == true) | .key' servers/registry.json)
           
-          # Update zettelkasten server
-          echo "Updating zettelkasten server..."
-          ZETTELKASTEN_COMMIT=$(get_latest_commit "https://github.com/entanglr/zettelkasten-mcp")
-          jq --arg commit "$ZETTELKASTEN_COMMIT" --arg date "$SYNC_DATE" \
-            '.servers.zettelkasten.gitCommit = $commit | .servers.zettelkasten.lastSync = $date' \
-            servers/registry.json.tmp > servers/registry.json.tmp2
-          mv servers/registry.json.tmp2 servers/registry.json.tmp
+          for server in $SERVERS; do
+            echo "Updating $server server..."
+            
+            # Get repository URL from registry
+            REPO_URL=$(jq -r ".servers.$server.repository" servers/registry.json)
+            
+            if [ "$REPO_URL" != "null" ] && [ -n "$REPO_URL" ]; then
+              # Get the latest commit
+              COMMIT=$(get_latest_commit "$REPO_URL")
+              
+              # Update the server's commit and sync date
+              jq --arg server "$server" --arg commit "$COMMIT" --arg date "$SYNC_DATE" \
+                '.servers[$server].gitCommit = $commit | .servers[$server].lastSync = $date' \
+                servers/registry.json.tmp > servers/registry.json.tmp2
+              mv servers/registry.json.tmp2 servers/registry.json.tmp
+              
+              echo "$server server commit: $COMMIT"
+            else
+              echo "Skipping $server - no repository URL"
+            fi
+          done
           
           # Update the main updated timestamp
           jq --arg date "$SYNC_DATE" '.updated = $date' \
@@ -104,9 +108,6 @@ jobs:
           mv servers/registry.json.tmp servers/registry.json
           
           echo "Sync completed at $SYNC_DATE"
-          echo "Time server commit: $TIME_COMMIT"
-          echo "Playwright server commit: $PLAYWRIGHT_COMMIT"
-          echo "Zettelkasten server commit: $ZETTELKASTEN_COMMIT"
       
       - name: Check for changes
         id: check-changes
