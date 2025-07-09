@@ -6,7 +6,7 @@ on:
       servers:
         description: 'Servers to build (comma-separated, e.g. "time,playwright" or "all")'
         required: false
-        default: ''
+        default: 'all'
         type: string
       force_build:
         description: 'Force rebuild even if no changes detected'
@@ -15,6 +15,11 @@ on:
         type: boolean
       build_base:
         description: 'Also rebuild base images'
+        required: false
+        default: false
+        type: boolean
+      push_images:
+        description: 'Push built images to registry'
         required: false
         default: false
         type: boolean
@@ -151,7 +156,7 @@ jobs:
     if: needs.detect-changes.outputs.base-changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_base == true)
     uses: ./.github/workflows/build-base-images.yml
     with:
-      push_images: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      push_images: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_images) }}
       image_tag_suffix: ${{ github.event_name == 'pull_request' && format('-pr-{0}', github.event.pull_request.number) || '' }}
     permissions:
       contents: read
@@ -252,10 +257,10 @@ jobs:
             mcp.server=${{ matrix.server }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_images) }}
       
       - name: Run Trivy vulnerability scanner
-        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.check-rebuild.outputs.skip != 'true' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_images))
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
@@ -266,7 +271,7 @@ jobs:
           ignore-unfixed: true
       
       - name: Upload Trivy scan results
-        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.check-rebuild.outputs.skip != 'true' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_images))
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
