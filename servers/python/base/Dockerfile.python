@@ -7,11 +7,17 @@ RUN apk add --no-cache curl ca-certificates
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Upgrade pip and setuptools to fix security vulnerabilities
+RUN python -m pip install --upgrade pip setuptools>=78.1.1
+
 # Final stage
 FROM python:3.13-alpine
 
 # Install only runtime dependencies
 RUN apk add --no-cache ca-certificates
+
+# Upgrade pip and setuptools to fix security vulnerabilities (CVE-2024-6345, CVE-2025-47273)
+RUN python -m pip install --upgrade pip setuptools>=78.1.1
 
 # Create non-root user in a single layer
 RUN addgroup -g 1001 -S python && \
