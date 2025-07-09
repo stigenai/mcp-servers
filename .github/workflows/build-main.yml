@@ -9,6 +9,9 @@ on:
 jobs:
   determine-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       base-changed: ${{ steps.changes.outputs.base }}
       servers-changed: ${{ steps.changes.outputs.servers }}
@@ -32,6 +35,8 @@ jobs:
     needs: determine-changes
     if: ${{ needs.determine-changes.outputs.base-changed == 'true' }}
     uses: ./.github/workflows/build-base-images.yml
+    with:
+      push_images: ${{ github.event_name == 'push' }}
     permissions:
       contents: read
       packages: write
@@ -39,6 +44,7 @@ jobs:
       actions: read
       attestations: write
       id-token: write
+    secrets: inherit
 
   build-servers:
     needs: [determine-changes, build-base]
@@ -53,3 +59,4 @@ jobs:
       actions: read
       attestations: write
       id-token: write
+    secrets: inherit
