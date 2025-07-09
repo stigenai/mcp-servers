@@ -23,6 +23,9 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      actions: read
+      attestations: write
+      id-token: write
     strategy:
       matrix:
         include:
