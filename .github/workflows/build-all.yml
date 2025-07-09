@@ -79,6 +79,31 @@ jobs:
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "Building ${{ matrix.server }} v$VERSION (type: $TYPE)"
           
+      - name: Build server image (temp)
+        uses: docker/build-push-action@v6
+        with:
+          context: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}
+          file: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}/Dockerfile
+          build-args: |
+            BASE_IMAGE_TAG=${{ inputs.base_image_tag }}
+          tags: temp-${{ matrix.server }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: false
+          load: true
+          
+      - name: Get MCP version from image
+        id: mcp-version
+        run: |
+          # Extract MCP version based on server type
+          if [ "${{ steps.meta.outputs.type }}" = "python" ]; then
+            MCP_VERSION=$(docker run --rm temp-${{ matrix.server }}:latest sh -c "pip list | grep -E '^mcp\s' | awk '{print \$2}'")
+          else
+            MCP_VERSION=$(docker run --rm temp-${{ matrix.server }}:latest sh -c "npm list -g --depth=0 | grep '@playwright/mcp' | sed 's/.*@//'")
+          fi
+          echo "mcp_version=$MCP_VERSION" >> $GITHUB_OUTPUT
+          echo "MCP version: $MCP_VERSION"
+          
       - name: Build server image
         uses: docker/build-push-action@v6
         with:
@@ -89,6 +114,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:mcp-${{ steps.mcp-version.outputs.mcp_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: ${{ github.event_name == 'push' || inputs.push_images == 'true' }}

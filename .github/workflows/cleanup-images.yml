@@ -1,0 +1,56 @@
+name: Cleanup Old Images
+
+on:
+  schedule:
+    # Run every Tuesday at 11 PM UTC (Tuesday night)
+    - cron: '0 23 * * 2'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  RETENTION_DAYS: 14
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        package:
+          - mcp-python-base
+          - mcp-node-base
+          - mcp-time
+          - mcp-playwright
+    steps:
+      - name: Delete old PR images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: container
+          min-versions-to-keep: 0
+          delete-only-pre-release-versions: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Delete PR-tagged images older than retention period
+          ignore-versions: '^(?!.*-pr-\d+).*$'
+          older-than: ${{ env.RETENTION_DAYS }} days
+
+      - name: Delete old weekly images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: container
+          min-versions-to-keep: 4  # Keep last 4 weekly builds
+          delete-only-pre-release-versions: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Only target weekly builds
+          ignore-versions: '^(?!.*weekly-).*$'
+          
+      - name: List remaining versions
+        run: |
+          echo "Remaining versions for ${{ matrix.package }}:"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/orgs/${{ github.repository_owner }}/packages/container/${{ matrix.package }}/versions" \
+            --jq '.[].metadata.container.tags[]' | sort -u || echo "No versions found"
