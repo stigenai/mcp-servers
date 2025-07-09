@@ -142,4 +142,3 @@ To add a new MCP server:
 ## License
 
 [Add license information]
-
