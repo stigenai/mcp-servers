@@ -55,7 +55,8 @@ if [ "$TYPE" == "python" ]; then
     docker build -t "$REGISTRY/stigenai/mcp-python-base:latest" -f ../servers/python/base/Dockerfile.python ../servers/python/base
 elif [ "$TYPE" == "node" ]; then
     echo -e "${YELLOW}Building Node base image...${NC}"
-    docker build -t "$REGISTRY/stigenai/mcp-node-base:latest" -f ../servers/node/base/Dockerfile.node ../servers/node/base
+    # Always build with Chromium for now since playwright requires it
+    docker build --build-arg INSTALL_CHROMIUM=true -t "$REGISTRY/stigenai/mcp-node-base:latest" -f ../servers/node/base/Dockerfile.node ../servers/node/base
 fi
 
 # Build server image

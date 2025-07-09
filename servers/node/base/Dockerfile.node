@@ -1,21 +1,23 @@
 FROM node:24-alpine
 
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    ca-certificates \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ttf-freefont
+# Build argument to control Chromium installation
+ARG INSTALL_CHROMIUM=false
 
-# Tell Puppeteer/Playwright to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true \
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Install minimal dependencies first
+RUN apk add --no-cache ca-certificates
+
+# Conditionally install Chromium and its dependencies
+RUN if [ "$INSTALL_CHROMIUM" = "true" ]; then \
+        apk add --no-cache \
+        chromium \
+        nss \
+        freetype \
+        harfbuzz; \
+    fi
+
+# Create non-root user in a single layer
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
 
 # Create app directory
 WORKDIR /app
@@ -24,16 +26,26 @@ WORKDIR /app
 ENV MCP_PORT=3000
 ENV NODE_ENV=production
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Conditionally set browser environment variables
+RUN if [ "$INSTALL_CHROMIUM" = "true" ]; then \
+        echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile; \
+        echo 'export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser' >> /etc/profile; \
+        echo 'export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true' >> /etc/profile; \
+        echo 'export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser' >> /etc/profile; \
+    fi
+
+# Set browser env vars if Chromium is installed
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=${INSTALL_CHROMIUM:+true} \
+    PUPPETEER_EXECUTABLE_PATH=${INSTALL_CHROMIUM:+/usr/bin/chromium-browser} \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=${INSTALL_CHROMIUM:+true} \
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${INSTALL_CHROMIUM:+/usr/bin/chromium-browser}
 
 # Expose MCP port
 EXPOSE 3000
 
-# Add healthcheck
+# Add healthcheck using wget (already included in Alpine)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 # Default command (will be overridden by specific servers)
 CMD ["node", "--version"]
