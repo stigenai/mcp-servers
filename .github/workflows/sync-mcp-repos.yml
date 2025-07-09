@@ -72,6 +72,40 @@ jobs:
             fi
           }
           
+          # Function to get latest release version from a GitHub repo
+          get_latest_release() {
+            local repo=$1
+            
+            # Extract owner and repo name from URL
+            if [[ $repo =~ github\.com/([^/]+)/([^/]+) ]]; then
+              owner="${BASH_REMATCH[1]}"
+              repo_name="${BASH_REMATCH[2]}"
+              
+              # Remove .git suffix if present
+              repo_name="${repo_name%.git}"
+              
+              # Handle URLs with /tree/main/path
+              if [[ $repo =~ /tree/main/(.+)$ ]]; then
+                repo_url="https://github.com/$owner/$repo_name"
+              else
+                repo_url="$repo"
+              fi
+              
+              echo "Fetching latest release for $owner/$repo_name" >&2
+              
+              # Get latest release
+              release=$(curl -s "https://api.github.com/repos/$owner/$repo_name/releases/latest" | jq -r '.tag_name // empty')
+              
+              if [ -n "$release" ]; then
+                echo "$release"
+              else
+                echo "null"
+              fi
+            else
+              echo "null"
+            fi
+          }
+          
           # Process each server dynamically from registry
           echo "Processing servers from registry..."
           
@@ -88,13 +122,16 @@ jobs:
               # Get the latest commit
               COMMIT=$(get_latest_commit "$REPO_URL")
               
-              # Update the server's commit and sync date
-              jq --arg server "$server" --arg commit "$COMMIT" --arg date "$SYNC_DATE" \
-                '.servers[$server].gitCommit = $commit | .servers[$server].lastSync = $date' \
+              # Get the latest release version
+              RELEASE=$(get_latest_release "$REPO_URL")
+              
+              # Update the server's commit, release version and sync date
+              jq --arg server "$server" --arg commit "$COMMIT" --arg release "$RELEASE" --arg date "$SYNC_DATE" \
+                '.servers[$server].gitCommit = $commit | .servers[$server].releaseVersion = $release | .servers[$server].lastSync = $date' \
                 servers/registry.json.tmp > servers/registry.json.tmp2
               mv servers/registry.json.tmp2 servers/registry.json.tmp
               
-              echo "$server server commit: $COMMIT"
+              echo "$server server commit: $COMMIT, release: $RELEASE"
             else
               echo "Skipping $server - no repository URL"
             fi
@@ -121,11 +158,27 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
       
+      - name: Update README if needed
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          # Update README with latest server information
+          ./scripts/generate-readme.sh
+          
+          # Check if README changed
+          if ! git diff --exit-code README.md; then
+            git add README.md
+            README_UPDATED=true
+          fi
+      
       - name: Commit and push changes
         if: steps.check-changes.outputs.changed == 'true'
         run: |
           git add servers/registry.json
-          git commit -m "chore: sync MCP repository commits [skip ci]"
+          if [ "$README_UPDATED" == "true" ]; then
+            git commit -m "chore: sync MCP repository commits and update README [skip ci]"
+          else
+            git commit -m "chore: sync MCP repository commits [skip ci]"
+          fi
           git push origin main
       
       - name: Trigger builds if commits changed
