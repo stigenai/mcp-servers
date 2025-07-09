@@ -75,7 +75,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/mcp-python-base:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: false
+          push: ${{ github.event_name == 'push' || inputs.push_images == 'true' }}
           
       - name: Build base image (Node)
         if: steps.meta.outputs.type == 'node'
@@ -86,7 +86,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/mcp-node-base:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: false
+          push: ${{ github.event_name == 'push' || inputs.push_images == 'true' }}
           
       - name: Build server image
         uses: docker/build-push-action@v5
