@@ -61,7 +61,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:nightly-${{ steps.timestamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: ${{ inputs.push_images != 'false' }}
+          push: true
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
