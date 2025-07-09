@@ -44,10 +44,21 @@ fi
 VERSION=$(grep "version:" "../servers/$CONFIG_PATH" | awk '{print $2}')
 SERVER_DIR=$(dirname "../servers/$CONFIG_PATH")
 
+# Get MCP commit from registry
+MCP_COMMIT=$(echo "$SERVER_INFO" | jq -r '.gitCommit')
+MCP_COMMIT_SHORT="${MCP_COMMIT:0:7}"
+
 echo -e "${GREEN}Building $SERVER server...${NC}"
 echo "Type: $TYPE"
 echo "Version: $VERSION"
+echo "MCP commit: $MCP_COMMIT_SHORT"
 echo "Directory: $SERVER_DIR"
+
+# Check if MCP commit exists
+if [ "$MCP_COMMIT" == "null" ] || [ -z "$MCP_COMMIT" ]; then
+    echo -e "${RED}Error: No MCP commit found for $SERVER. Run sync-mcp-repos workflow first.${NC}"
+    exit 1
+fi
 
 # Build base image first if needed
 if [ "$TYPE" == "python" ]; then
@@ -63,6 +74,10 @@ echo -e "${GREEN}Building $SERVER image...${NC}"
 docker build \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION" \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:latest" \
+    -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT" \
+    --label "org.opencontainers.image.revision=$MCP_COMMIT" \
+    --label "mcp.commit=$MCP_COMMIT" \
+    --label "mcp.server=$SERVER" \
     -f "$SERVER_DIR/Dockerfile" \
     "$SERVER_DIR"
 
@@ -70,11 +85,13 @@ echo -e "${GREEN}Successfully built $SERVER server${NC}"
 echo "Tagged as:"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:latest"
+echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT"
 
 # Push if requested
 if [ "$2" == "push" ]; then
     echo -e "${YELLOW}Pushing images...${NC}"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:latest"
+    docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT"
     echo -e "${GREEN}Successfully pushed images${NC}"
 fi

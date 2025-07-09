@@ -7,56 +7,10 @@ on:
     branches: [main]
 
 jobs:
-  determine-changes:
-    runs-on: ubuntu-latest
+  build:
+    uses: ./.github/workflows/build-servers.yml
     permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      base-changed: ${{ steps.changes.outputs.base }}
-      servers-changed: ${{ steps.changes.outputs.servers }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            base:
-              - 'servers/python/base/**'
-              - 'servers/node/base/**'
-            servers:
-              - 'servers/python/time/**'
-              - 'servers/python/zettelkasten/**'
-              - 'servers/node/playwright/**'
-              - 'scripts/**'
-              - 'servers/registry.json'
-
-  build-base:
-    needs: determine-changes
-    if: ${{ needs.determine-changes.outputs.base-changed == 'true' }}
-    uses: ./.github/workflows/build-base-images.yml
-    with:
-      push_images: true
-      image_tag_suffix: ${{ github.event_name == 'pull_request' && format('-pr-{0}', github.event.pull_request.number) || '' }}
-    permissions:
-      contents: read
-      packages: write
-      security-events: write
-      actions: read
-      attestations: write
-      id-token: write
-    secrets: inherit
-
-  build-servers:
-    needs: [determine-changes, build-base]
-    if: ${{ always() && (needs.determine-changes.outputs.servers-changed == 'true' || needs.build-base.result == 'success') }}
-    uses: ./.github/workflows/build-all.yml
-    with:
-      push_images: ${{ github.event_name == 'push' }}
-      base_image_tag: ${{ needs.build-base.result == 'success' && github.event_name == 'pull_request' && format('latest-pr-{0}', github.event.pull_request.number) || 'latest' }}
-    permissions:
-      contents: read
+      contents: write
       packages: write
       security-events: write
       actions: read
