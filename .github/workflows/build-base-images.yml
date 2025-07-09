@@ -2,8 +2,8 @@ name: Build Base Images
 
 on:
   schedule:
-    # Run every day at 2 AM UTC
-    - cron: '0 2 * * *'
+    # Run every Monday at 2 AM UTC
+    - cron: '0 2 * * 1'
   workflow_dispatch:
     inputs:
       push_images:
@@ -74,7 +74,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest${{ inputs.image_tag_suffix }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:nightly-${{ steps.timestamp.outputs.date }}${{ inputs.image_tag_suffix }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:weekly-${{ steps.timestamp.outputs.date }}${{ inputs.image_tag_suffix }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: ${{ inputs.push_images != 'false' }}

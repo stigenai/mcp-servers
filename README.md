@@ -100,7 +100,23 @@ Secrets are stored encrypted per user/organization and injected at runtime.
 
 ## Integration with Orchestrator
 
-The orchestrator fetches the server registry from:
+The server registry is available in two ways:
+
+### 1. As an OCI Image (Recommended)
+```bash
+# Pull the registry image
+docker pull ghcr.io/stigenai/mcp-servers-registry:latest
+
+# Extract registry.json using the provided script
+./scripts/get-registry.sh
+
+# Or manually extract
+docker create --name temp-registry ghcr.io/stigenai/mcp-servers-registry:latest
+docker cp temp-registry:/registry.json ./registry.json
+docker rm temp-registry
+```
+
+### 2. Via GitHub Raw URL
 ```
 https://raw.githubusercontent.com/stigenai/mcp-servers/main/servers/registry.json
 ```
