@@ -136,26 +136,6 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  update-registry:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Update registry timestamp
-        run: |
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          jq --arg ts "$TIMESTAMP" '.updated = $ts' servers/registry.json > servers/registry.json.tmp
-          mv servers/registry.json.tmp servers/registry.json
-          
-      - name: Commit registry update
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: 'servers/registry.json'
-          message: 'chore: update registry timestamp [skip ci]'
-          default_author: github_actions
-
   build-summary:
     needs: build
     runs-on: ubuntu-latest
