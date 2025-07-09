@@ -15,7 +15,7 @@
         "memory": 256
       },
       "gitCommit": null,
-      "buildDate": null
+      "lastSync": null
     },
     "playwright": {
       "name": "Playwright Browser Automation",
@@ -30,7 +30,7 @@
         "memory": 512
       },
       "gitCommit": null,
-      "buildDate": null
+      "lastSync": null
     },
     "zettelkasten": {
       "name": "Zettelkasten Knowledge Management",
@@ -45,7 +45,7 @@
         "memory": 512
       },
       "gitCommit": null,
-      "buildDate": null
+      "lastSync": null
     },
     "custom": {
       "name": "Custom Docker Image",

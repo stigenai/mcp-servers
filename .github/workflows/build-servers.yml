@@ -123,34 +123,31 @@ jobs:
           # Get version from config
           VERSION=$(grep "version:" "servers/$CONFIG_PATH" | awk '{print $2}')
           
-          # Get git commit for this server's directory
-          SERVER_DIR="servers/$TYPE/${{ matrix.server }}"
-          GIT_COMMIT=$(git log -1 --format=%h -- "$SERVER_DIR")
-          GIT_COMMIT_FULL=$(git log -1 --format=%H -- "$SERVER_DIR")
-          
-          # Get current date
-          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # Get MCP repo commit from registry
+          MCP_COMMIT=$(jq -r ".servers.${{ matrix.server }}.gitCommit" servers/registry.json)
+          MCP_COMMIT_SHORT="${MCP_COMMIT:0:7}"
           
           echo "config_path=$CONFIG_PATH" >> $GITHUB_OUTPUT
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "git_commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
-          echo "git_commit_full=$GIT_COMMIT_FULL" >> $GITHUB_OUTPUT
-          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+          echo "mcp_commit=$MCP_COMMIT" >> $GITHUB_OUTPUT
+          echo "mcp_commit_short=$MCP_COMMIT_SHORT" >> $GITHUB_OUTPUT
           
-          echo "Building ${{ matrix.server }} v$VERSION (commit: $GIT_COMMIT)"
+          echo "Building ${{ matrix.server }} v$VERSION (MCP commit: $MCP_COMMIT_SHORT)"
       
       - name: Check if rebuild needed
         id: check-rebuild
         run: |
-          # Get the last built commit from registry
-          LAST_COMMIT=$(jq -r ".servers.${{ matrix.server }}.gitCommit" servers/registry.json)
-          
-          if [ "$LAST_COMMIT" == "${{ steps.meta.outputs.git_commit_full }}" ] && [ "${{ needs.detect-changes.outputs.base-changed }}" != "true" ]; then
-            echo "No changes detected for ${{ matrix.server }}, skipping build"
+          # Check if we have the MCP commit
+          if [ "${{ steps.meta.outputs.mcp_commit }}" == "null" ] || [ -z "${{ steps.meta.outputs.mcp_commit }}" ]; then
+            echo "No MCP commit found for ${{ matrix.server }}, skipping build"
             echo "skip=true" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.detect-changes.outputs.base-changed }}" == "true" ]; then
+            echo "Base image changed, rebuilding ${{ matrix.server }}"
+            echo "skip=false" >> $GITHUB_OUTPUT
           else
-            echo "Changes detected, rebuilding ${{ matrix.server }}"
+            # For normal builds, always build when there are changes to our server files
+            echo "Building ${{ matrix.server }}"
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
       
@@ -165,25 +162,15 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.version }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.git_commit }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.mcp_commit_short }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.git_commit_full }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.mcp_commit }}
+            mcp.commit=${{ steps.meta.outputs.mcp_commit }}
+            mcp.server=${{ matrix.server }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      
-      - name: Update registry with build info
-        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          # Update registry with git commit and build date
-          jq --arg server "${{ matrix.server }}" \
-             --arg commit "${{ steps.meta.outputs.git_commit_full }}" \
-             --arg date "${{ steps.meta.outputs.build_date }}" \
-             '.servers[$server].gitCommit = $commit | .servers[$server].buildDate = $date' \
-             servers/registry.json > servers/registry.json.tmp
-          mv servers/registry.json.tmp servers/registry.json
       
       - name: Run Trivy vulnerability scanner
         if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -202,38 +189,3 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  commit-registry:
-    needs: build-servers
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-      
-      - name: Pull latest changes
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git pull origin main
-      
-      - name: Check for registry changes
-        id: check-changes
-        run: |
-          if git diff --exit-code servers/registry.json; then
-            echo "No registry changes to commit"
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "Registry has changes"
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Commit registry updates
-        if: steps.check-changes.outputs.changed == 'true'
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: 'servers/registry.json'
-          message: 'chore: update registry with build info [skip ci]'
-          default_author: github_actions

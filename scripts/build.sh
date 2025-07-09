@@ -44,15 +44,21 @@ fi
 VERSION=$(grep "version:" "../servers/$CONFIG_PATH" | awk '{print $2}')
 SERVER_DIR=$(dirname "../servers/$CONFIG_PATH")
 
-# Get git commit for this server
-GIT_COMMIT=$(git -C .. log -1 --format=%h -- "servers/$TYPE/$SERVER")
-GIT_COMMIT_FULL=$(git -C .. log -1 --format=%H -- "servers/$TYPE/$SERVER")
+# Get MCP commit from registry
+MCP_COMMIT=$(echo "$SERVER_INFO" | jq -r '.gitCommit')
+MCP_COMMIT_SHORT="${MCP_COMMIT:0:7}"
 
 echo -e "${GREEN}Building $SERVER server...${NC}"
 echo "Type: $TYPE"
 echo "Version: $VERSION"
-echo "Git commit: $GIT_COMMIT"
+echo "MCP commit: $MCP_COMMIT_SHORT"
 echo "Directory: $SERVER_DIR"
+
+# Check if MCP commit exists
+if [ "$MCP_COMMIT" == "null" ] || [ -z "$MCP_COMMIT" ]; then
+    echo -e "${RED}Error: No MCP commit found for $SERVER. Run sync-mcp-repos workflow first.${NC}"
+    exit 1
+fi
 
 # Build base image first if needed
 if [ "$TYPE" == "python" ]; then
@@ -68,9 +74,10 @@ echo -e "${GREEN}Building $SERVER image...${NC}"
 docker build \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION" \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:latest" \
-    -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT" \
-    --label "org.opencontainers.image.revision=$GIT_COMMIT_FULL" \
-    --label "org.opencontainers.image.created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT" \
+    --label "org.opencontainers.image.revision=$MCP_COMMIT" \
+    --label "mcp.commit=$MCP_COMMIT" \
+    --label "mcp.server=$SERVER" \
     -f "$SERVER_DIR/Dockerfile" \
     "$SERVER_DIR"
 
@@ -78,25 +85,13 @@ echo -e "${GREEN}Successfully built $SERVER server${NC}"
 echo "Tagged as:"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:latest"
-echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT"
+echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT"
 
 # Push if requested
 if [ "$2" == "push" ]; then
     echo -e "${YELLOW}Pushing images...${NC}"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:latest"
-    docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT"
+    docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$MCP_COMMIT_SHORT"
     echo -e "${GREEN}Successfully pushed images${NC}"
-    
-    # Update registry with build info
-    echo -e "${YELLOW}Updating registry...${NC}"
-    BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    cd ..
-    jq --arg server "$SERVER" \
-       --arg commit "$GIT_COMMIT_FULL" \
-       --arg date "$BUILD_DATE" \
-       '.servers[$server].gitCommit = $commit | .servers[$server].buildDate = $date' \
-       servers/registry.json > servers/registry.json.tmp
-    mv servers/registry.json.tmp servers/registry.json
-    echo -e "${GREEN}Registry updated${NC}"
 fi
