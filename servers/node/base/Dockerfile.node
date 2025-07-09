@@ -3,6 +3,9 @@ FROM node:24-alpine
 # Install minimal dependencies
 RUN apk add --no-cache ca-certificates
 
+# Update npm to fix cross-spawn vulnerability (CVE-2024-21538)
+RUN npm install -g npm@latest
+
 # Create non-root user in a single layer
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
