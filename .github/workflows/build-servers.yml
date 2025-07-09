@@ -2,6 +2,22 @@ name: Build MCP Servers
 
 on:
   workflow_dispatch:
+    inputs:
+      servers:
+        description: 'Servers to build (comma-separated, e.g. "time,playwright" or "all")'
+        required: false
+        default: ''
+        type: string
+      force_build:
+        description: 'Force rebuild even if no changes detected'
+        required: false
+        default: false
+        type: boolean
+      build_base:
+        description: 'Also rebuild base images'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
   push:
     branches: [main]
@@ -48,50 +64,83 @@ jobs:
           ALL_SERVERS=$(jq -r '.servers | to_entries[] | select(.value.supported == true) | .key' servers/registry.json | jq -R -s -c 'split("\n")[:-1]')
           echo "All supported servers: $ALL_SERVERS"
           
-          # Check if base images changed
-          if [ "${{ steps.changed-files.outputs.base_any_changed }}" == "true" ]; then
-            echo "base=true" >> $GITHUB_OUTPUT
-            # If base changed, rebuild all servers
-            SERVERS=$ALL_SERVERS
-          else
-            # Build only changed servers
-            SERVERS='[]'
+          # Handle manual workflow dispatch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Check if manual server selection is provided
+            if [ -n "${{ inputs.servers }}" ]; then
+              if [ "${{ inputs.servers }}" == "all" ]; then
+                # Build all servers
+                SERVERS=$ALL_SERVERS
+              else
+                # Build specified servers
+                SERVERS=$(echo "${{ inputs.servers }}" | tr ',' '\n' | jq -R -s -c 'split("\n")[:-1] | map(select(. != ""))')
+              fi
+              echo "Manual build requested for: $SERVERS"
+            else
+              # No servers specified, use normal change detection
+              MANUAL_MODE=false
+            fi
             
-            # Check if registry changed (MCP commits updated)
-            if [ "${{ steps.changed-files.outputs.registry_any_changed }}" == "true" ]; then
-              echo "Registry changed, checking for MCP commit updates..."
+            # Handle base image rebuild request
+            if [ "${{ inputs.build_base }}" == "true" ]; then
+              echo "base=true" >> $GITHUB_OUTPUT
+            fi
+            
+            # Force build if requested
+            if [ "${{ inputs.force_build }}" == "true" ] && [ -z "${{ inputs.servers }}" ]; then
+              # Force build all servers
+              SERVERS=$ALL_SERVERS
+              echo "Force build all servers"
+            fi
+          fi
+          
+          # Normal change detection if not manually specified
+          if [ -z "$SERVERS" ]; then
+            # Check if base images changed
+            if [ "${{ steps.changed-files.outputs.base_any_changed }}" == "true" ]; then
+              echo "base=true" >> $GITHUB_OUTPUT
+              # If base changed, rebuild all servers
+              SERVERS=$ALL_SERVERS
+            else
+              # Build only changed servers
+              SERVERS='[]'
               
-              # Get previous and current registry contents
-              git show HEAD^:servers/registry.json > /tmp/registry_old.json
-              cp servers/registry.json /tmp/registry_new.json
-              
-              # Check each server for commit changes
-              for server in $(echo $ALL_SERVERS | jq -r '.[]'); do
-                OLD_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_old.json)
-                NEW_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_new.json)
+              # Check if registry changed (MCP commits updated)
+              if [ "${{ steps.changed-files.outputs.registry_any_changed }}" == "true" ]; then
+                echo "Registry changed, checking for MCP commit updates..."
                 
-                if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
-                  echo "MCP commit changed for $server: $OLD_COMMIT -> $NEW_COMMIT"
-                  SERVERS=$(echo $SERVERS | jq --arg server "$server" '. += [$server]')
-                fi
-              done
+                # Get previous and current registry contents
+                git show HEAD^:servers/registry.json > /tmp/registry_old.json
+                cp servers/registry.json /tmp/registry_new.json
+                
+                # Check each server for commit changes
+                for server in $(echo $ALL_SERVERS | jq -r '.[]'); do
+                  OLD_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_old.json)
+                  NEW_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_new.json)
+                  
+                  if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+                    echo "MCP commit changed for $server: $OLD_COMMIT -> $NEW_COMMIT"
+                    SERVERS=$(echo $SERVERS | jq --arg server "$server" '. += [$server]')
+                  fi
+                done
+              fi
+              
+              # Check for direct file changes using the outputs
+              if [ "${{ steps.changed-files.outputs.time_any_changed }}" == "true" ]; then
+                SERVERS=$(echo $SERVERS | jq '. += ["time"]' | jq 'select(. != null)')
+              fi
+              
+              if [ "${{ steps.changed-files.outputs.playwright_any_changed }}" == "true" ]; then
+                SERVERS=$(echo $SERVERS | jq '. += ["playwright"]' | jq 'select(. != null)')
+              fi
+              
+              if [ "${{ steps.changed-files.outputs.zettelkasten_any_changed }}" == "true" ]; then
+                SERVERS=$(echo $SERVERS | jq '. += ["zettelkasten"]' | jq 'select(. != null)')
+              fi
+              
+              # Remove duplicates
+              SERVERS=$(echo $SERVERS | jq 'unique')
             fi
-            
-            # Check for direct file changes using the outputs
-            if [ "${{ steps.changed-files.outputs.time_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["time"]' | jq 'select(. != null)')
-            fi
-            
-            if [ "${{ steps.changed-files.outputs.playwright_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["playwright"]' | jq 'select(. != null)')
-            fi
-            
-            if [ "${{ steps.changed-files.outputs.zettelkasten_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["zettelkasten"]' | jq 'select(. != null)')
-            fi
-            
-            # Remove duplicates
-            SERVERS=$(echo $SERVERS | jq 'unique')
           fi
           
           echo "servers=$SERVERS" >> $GITHUB_OUTPUT
@@ -99,7 +148,7 @@ jobs:
 
   build-base:
     needs: detect-changes
-    if: needs.detect-changes.outputs.base-changed == 'true'
+    if: needs.detect-changes.outputs.base-changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_base == true)
     uses: ./.github/workflows/build-base-images.yml
     with:
       push_images: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
@@ -176,6 +225,9 @@ jobs:
           elif [ "${{ needs.detect-changes.outputs.base-changed }}" == "true" ]; then
             echo "Base image changed, rebuilding ${{ matrix.server }}"
             echo "skip=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ inputs.force_build }}" == "true" ]; then
+            echo "Force build requested for ${{ matrix.server }}"
+            echo "skip=false" >> $GITHUB_OUTPUT
           else
             # For normal builds, always build when there are changes to our server files
             echo "Building ${{ matrix.server }}"
@@ -219,4 +271,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
-
