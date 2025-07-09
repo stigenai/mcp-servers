@@ -30,8 +30,9 @@ servers/
 
 | Server | Type | Description | Image |
 |--------|------|-------------|-------|
-| time | Python | Time and timezone functionality | `ghcr.io/stigenai/mcp-time:latest` |
-| playwright | Node | Browser automation with Playwright | `ghcr.io/stigenai/mcp-playwright:latest` |
+| time | PYTHON | Provides time and timezone functionality | `ghcr.io/stigenai/mcp-time:latest` |
+| playwright | NODE | Browser automation and web scraping with Playwright | `ghcr.io/stigenai/mcp-playwright:latest` |
+| zettelkasten | PYTHON | Implements the Zettelkasten methodology with SQLite storage for knowledge management | `ghcr.io/stigenai/mcp-zettelkasten:latest` |
 
 ### Custom Servers
 
@@ -141,3 +142,4 @@ To add a new MCP server:
 ## License
 
 [Add license information]
+
