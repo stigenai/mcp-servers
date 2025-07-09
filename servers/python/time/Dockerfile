@@ -1,4 +1,5 @@
-FROM ghcr.io/stigenai/mcp-python-base:latest
+ARG BASE_IMAGE_TAG=latest
+FROM ghcr.io/stigenai/mcp-python-base:${BASE_IMAGE_TAG}
 
 # Copy configuration
 COPY config.yml /app/config.yml

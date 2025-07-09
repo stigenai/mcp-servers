@@ -15,6 +15,11 @@ on:
         required: false
         default: true
         type: boolean
+      base_image_tag:
+        description: 'Tag to use for base images'
+        required: false
+        default: 'latest'
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -80,6 +85,8 @@ jobs:
         with:
           context: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}
           file: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}/Dockerfile
+          build-args: |
+            BASE_IMAGE_TAG=${{ inputs.base_image_tag }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.version }}

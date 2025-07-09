@@ -36,7 +36,8 @@ jobs:
     if: ${{ needs.determine-changes.outputs.base-changed == 'true' }}
     uses: ./.github/workflows/build-base-images.yml
     with:
-      push_images: ${{ github.event_name == 'push' }}
+      push_images: true
+      image_tag_suffix: ${{ github.event_name == 'pull_request' && format('-pr-{0}', github.event.pull_request.number) || '' }}
     permissions:
       contents: read
       packages: write
@@ -52,6 +53,7 @@ jobs:
     uses: ./.github/workflows/build-all.yml
     with:
       push_images: ${{ github.event_name == 'push' }}
+      base_image_tag: ${{ github.event_name == 'pull_request' && format('latest-pr-{0}', github.event.pull_request.number) || 'latest' }}
     permissions:
       contents: read
       packages: write
