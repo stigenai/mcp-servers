@@ -76,7 +76,7 @@ jobs:
           echo "Building ${{ matrix.server }} v$VERSION (type: $TYPE)"
           
       - name: Build server image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}
           file: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}/Dockerfile
