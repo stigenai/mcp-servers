@@ -1,5 +1,5 @@
 {
-  "name": "@stigenio/mcp-servers",
+  "name": "@stigenai/mcp-servers",
   "version": "1.0.0",
   "description": "Docker images for MCP (Model Context Protocol) servers",
   "private": true,
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stigenio/mcp-servers.git"
+    "url": "git+https://github.com/stigenai/mcp-servers.git"
   },
   "keywords": [
     "mcp",

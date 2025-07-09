@@ -18,7 +18,7 @@ fi
 
 SERVER=$1
 REGISTRY=${REGISTRY:-"ghcr.io"}
-IMAGE_PREFIX=${IMAGE_PREFIX:-"stigenio/mcp-"}
+IMAGE_PREFIX=${IMAGE_PREFIX:-"stigenai/mcp-"}
 
 # Get server info from registry
 SERVER_INFO=$(jq -r ".servers.$SERVER" ../servers/registry.json)
@@ -52,10 +52,10 @@ echo "Directory: $SERVER_DIR"
 # Build base image first if needed
 if [ "$TYPE" == "python" ]; then
     echo -e "${YELLOW}Building Python base image...${NC}"
-    docker build -t "$REGISTRY/stigenio/mcp-python-base:latest" -f ../servers/python/base/Dockerfile.python ../servers/python/base
+    docker build -t "$REGISTRY/stigenai/mcp-python-base:latest" -f ../servers/python/base/Dockerfile.python ../servers/python/base
 elif [ "$TYPE" == "node" ]; then
     echo -e "${YELLOW}Building Node base image...${NC}"
-    docker build -t "$REGISTRY/stigenio/mcp-node-base:latest" -f ../servers/node/base/Dockerfile.node ../servers/node/base
+    docker build -t "$REGISTRY/stigenai/mcp-node-base:latest" -f ../servers/node/base/Dockerfile.node ../servers/node/base
 fi
 
 # Build server image

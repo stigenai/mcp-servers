@@ -1,4 +1,4 @@
-FROM ghcr.io/stigenio/mcp-python-base:latest
+FROM ghcr.io/stigenai/mcp-python-base:latest
 
 # Copy configuration
 COPY config.yml /app/config.yml

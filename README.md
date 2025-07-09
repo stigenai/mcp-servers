@@ -30,8 +30,8 @@ servers/
 
 | Server | Type | Description | Image |
 |--------|------|-------------|-------|
-| time | Python | Time and timezone functionality | `ghcr.io/stigenio/mcp-time:latest` |
-| playwright | Node | Browser automation with Playwright | `ghcr.io/stigenio/mcp-playwright:latest` |
+| time | Python | Time and timezone functionality | `ghcr.io/stigenai/mcp-time:latest` |
+| playwright | Node | Browser automation with Playwright | `ghcr.io/stigenai/mcp-playwright:latest` |
 
 ### Custom Servers
 
@@ -102,7 +102,7 @@ Secrets are stored encrypted per user/organization and injected at runtime.
 
 The orchestrator fetches the server registry from:
 ```
-https://raw.githubusercontent.com/stigenio/mcp-servers/main/servers/registry.json
+https://raw.githubusercontent.com/stigenai/mcp-servers/main/servers/registry.json
 ```
 
 This allows the orchestrator to:
