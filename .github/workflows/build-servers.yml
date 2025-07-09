@@ -135,13 +135,17 @@ jobs:
                 done
               fi
               
-              # Check for direct file changes dynamically for each server
+              # Check for direct file changes
+              # Get all changed files as JSON array
+              CHANGED_FILES='${{ steps.changed-files.outputs.all_changed_files }}'
+              
+              # Check each server directory for changes
               for server in $(echo $ALL_SERVERS | jq -r '.[]'); do
-                # Get the output variable name for this server
-                VAR_NAME="${server}_any_changed"
-                VAR_VALUE=$(eval echo \${{ steps.changed-files.outputs.${VAR_NAME} }})
+                # Get the server type from registry
+                SERVER_TYPE=$(jq -r ".servers.$server.type" servers/registry.json)
                 
-                if [ "$VAR_VALUE" == "true" ]; then
+                # Check if any changed files are in this server's directory
+                if echo "$CHANGED_FILES" | jq -r '.[]' | grep -q "^servers/$SERVER_TYPE/$server/"; then
                   echo "Files changed for $server"
                   SERVERS=$(echo $SERVERS | jq --arg server "$server" '. += [$server]')
                 fi
