@@ -11,14 +11,13 @@ RUN apt-get update && \
 RUN groupadd -r python && useradd -r -g python -u 1001 -m python
 
 # Install uv for Python package management
-# Using the recommended installation method with specific version
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --version 0.5.18 && \
-    mv /root/.cargo /home/python/.cargo && \
-    chown -R python:python /home/python/.cargo
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.local /home/python/.local && \
+    chown -R python:python /home/python/.local
 
 # Switch to non-root user
 USER python
-ENV PATH="/home/python/.cargo/bin:${PATH}"
+ENV PATH="/home/python/.local/bin:${PATH}"
 
 # Create app directory
 WORKDIR /app

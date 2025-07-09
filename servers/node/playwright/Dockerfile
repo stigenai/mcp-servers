@@ -4,10 +4,10 @@ FROM ghcr.io/stigenai/mcp-node-base:latest
 COPY config.yml /app/config.yml
 
 # Install playwright MCP server
-RUN npm install -g @microsoft/mcp-playwright
+RUN npm install -g @playwright/mcp
 
 # Create startup script
-RUN echo '#!/bin/sh\nnpx @microsoft/mcp-playwright' > /app/start.sh && \
+RUN echo '#!/bin/sh\nnpx @playwright/mcp' > /app/start.sh && \
     chmod +x /app/start.sh
 
 # Switch to non-root user
