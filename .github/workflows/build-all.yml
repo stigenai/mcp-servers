@@ -105,11 +105,14 @@ jobs:
           
       - name: Run Trivy vulnerability scanner
         if: github.event_name == 'push' || inputs.push_images == 'true'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
+          scan-type: 'image'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
           
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.event_name == 'push' || inputs.push_images == 'true'

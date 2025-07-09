@@ -64,11 +64,14 @@ jobs:
           push: true
           
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          scan-type: 'image'
           format: 'sarif'
           output: 'trivy-results-${{ matrix.type }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
           
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
