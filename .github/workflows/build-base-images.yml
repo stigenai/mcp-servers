@@ -1,18 +1,6 @@
 name: Build Base Images
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'servers/python/base/**'
-      - 'servers/node/base/**'
-      - '.github/workflows/build-base-images.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'servers/python/base/**'
-      - 'servers/node/base/**'
-      - '.github/workflows/build-base-images.yml'
   schedule:
     # Run every day at 2 AM UTC
     - cron: '0 2 * * *'
@@ -22,6 +10,13 @@ on:
         description: 'Push images to registry'
         required: false
         default: 'true'
+        type: boolean
+  workflow_call:
+    inputs:
+      push_images:
+        description: 'Push images to registry'
+        required: false
+        default: true
         type: boolean
 
 env:
@@ -96,3 +91,4 @@ jobs:
         with:
           sarif_file: 'trivy-results-${{ matrix.type }}.sarif'
           category: 'base-image-${{ matrix.type }}'
+

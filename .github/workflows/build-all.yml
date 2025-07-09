@@ -1,16 +1,19 @@
 name: Build All MCP Servers
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       push_images:
         description: 'Push images to registry'
         required: false
         default: 'false'
+        type: boolean
+  workflow_call:
+    inputs:
+      push_images:
+        description: 'Push images to registry'
+        required: false
+        default: true
         type: boolean
 
 env:

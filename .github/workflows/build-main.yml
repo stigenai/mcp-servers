@@ -1,0 +1,55 @@
+name: Build Main
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  determine-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      base-changed: ${{ steps.changes.outputs.base }}
+      servers-changed: ${{ steps.changes.outputs.servers }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            base:
+              - 'servers/python/base/**'
+              - 'servers/node/base/**'
+            servers:
+              - 'servers/python/time/**'
+              - 'servers/node/playwright/**'
+              - 'scripts/**'
+              - 'servers/registry.json'
+
+  build-base:
+    needs: determine-changes
+    if: ${{ needs.determine-changes.outputs.base-changed == 'true' }}
+    uses: ./.github/workflows/build-base-images.yml
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+
+  build-servers:
+    needs: [determine-changes, build-base]
+    if: ${{ always() && (needs.determine-changes.outputs.servers-changed == 'true' || needs.build-base.result == 'success') }}
+    uses: ./.github/workflows/build-all.yml
+    with:
+      push_images: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
