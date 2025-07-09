@@ -31,5 +31,9 @@ RUN addgroup -g 1001 -S nodejs && \
 # Expose MCP port
 EXPOSE 3000
 
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
 # Default command (will be overridden by specific servers)
 CMD ["node", "--version"]

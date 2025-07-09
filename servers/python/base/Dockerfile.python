@@ -7,9 +7,18 @@ RUN apt-get update && \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN groupadd -r python && useradd -r -g python -u 1001 -m python
+
 # Install uv for Python package management
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Using the recommended installation method with specific version
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --version 0.5.18 && \
+    mv /root/.cargo /home/python/.cargo && \
+    chown -R python:python /home/python/.cargo
+
+# Switch to non-root user
+USER python
+ENV PATH="/home/python/.cargo/bin:${PATH}"
 
 # Create app directory
 WORKDIR /app
@@ -20,6 +29,10 @@ ENV PYTHONUNBUFFERED=1
 
 # Expose MCP port
 EXPOSE 3000
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:3000').getcode()" || exit 1
 
 # Default command (will be overridden by specific servers)
 CMD ["python", "-m", "http.server", "3000"]

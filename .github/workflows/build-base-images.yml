@@ -1,6 +1,18 @@
 name: Build Base Images
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'servers/python/base/**'
+      - 'servers/node/base/**'
+      - '.github/workflows/build-base-images.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'servers/python/base/**'
+      - 'servers/node/base/**'
+      - '.github/workflows/build-base-images.yml'
   schedule:
     # Run every day at 2 AM UTC
     - cron: '0 2 * * *'
@@ -64,10 +76,11 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:nightly-${{ steps.timestamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: true
+          push: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') }}
           
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') }}
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
           scan-type: 'image'
@@ -77,6 +90,7 @@ jobs:
           ignore-unfixed: true
           
       - name: Upload Trivy scan results to GitHub Security tab
+        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results-${{ matrix.type }}.sarif'

@@ -70,30 +70,6 @@ jobs:
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "Building ${{ matrix.server }} v$VERSION (type: $TYPE)"
           
-      - name: Build base image (Python)
-        if: steps.meta.outputs.type == 'python'
-        uses: docker/build-push-action@v5
-        with:
-          context: servers/python/base
-          file: servers/python/base/Dockerfile.python
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/mcp-python-base:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' || inputs.push_images == 'true' }}
-          load: true
-          
-      - name: Build base image (Node)
-        if: steps.meta.outputs.type == 'node'
-        uses: docker/build-push-action@v5
-        with:
-          context: servers/node/base
-          file: servers/node/base/Dockerfile.node
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/mcp-node-base:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' || inputs.push_images == 'true' }}
-          load: true
-          
       - name: Build server image
         uses: docker/build-push-action@v5
         with:
@@ -108,7 +84,7 @@ jobs:
           
       - name: Run Trivy vulnerability scanner
         if: github.event_name == 'push' || inputs.push_images == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
           scan-type: 'image'
