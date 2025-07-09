@@ -1,19 +1,25 @@
-FROM python:3.13-slim
+# Build stage for installing uv
+FROM python:3.13-alpine AS builder
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apk add --no-cache curl ca-certificates
 
-# Create non-root user
-RUN groupadd -r python && useradd -r -g python -u 1001 -m python
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install uv for Python package management
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    mv /root/.local /home/python/.local && \
-    chown -R python:python /home/python/.local
+# Final stage
+FROM python:3.13-alpine
+
+# Install only runtime dependencies
+RUN apk add --no-cache ca-certificates
+
+# Create non-root user in a single layer
+RUN addgroup -g 1001 -S python && \
+    adduser -u 1001 -S python -G python
+
+# Copy uv from builder stage
+COPY --from=builder /root/.local /home/python/.local
+RUN chown -R python:python /home/python/.local
 
 # Switch to non-root user
 USER python
@@ -29,9 +35,9 @@ ENV PYTHONUNBUFFERED=1
 # Expose MCP port
 EXPOSE 3000
 
-# Add healthcheck
+# Add healthcheck using wget (lighter than Python)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:3000').getcode()" || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 # Default command (will be overridden by specific servers)
 CMD ["python", "-m", "http.server", "3000"]

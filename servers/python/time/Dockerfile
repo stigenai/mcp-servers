@@ -7,9 +7,9 @@ COPY config.yml /app/config.yml
 # Install mcp-server-time using uv
 RUN uv tool install mcp-server-time
 
-# Create startup script
-RUN echo '#!/bin/sh\nuvx mcp-server-time' > /app/start.sh && \
-    chmod +x /app/start.sh
+# Copy startup script
+COPY --chown=python:python start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Run as non-root user (already set in base image)
 # USER python is already set in the base image
