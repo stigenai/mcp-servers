@@ -27,6 +27,7 @@ jobs:
               - 'servers/node/base/**'
             servers:
               - 'servers/python/time/**'
+              - 'servers/python/zettelkasten/**'
               - 'servers/node/playwright/**'
               - 'scripts/**'
               - 'servers/registry.json'
@@ -53,7 +54,7 @@ jobs:
     uses: ./.github/workflows/build-all.yml
     with:
       push_images: ${{ github.event_name == 'push' }}
-      base_image_tag: ${{ github.event_name == 'pull_request' && format('latest-pr-{0}', github.event.pull_request.number) || 'latest' }}
+      base_image_tag: ${{ needs.build-base.result == 'success' && github.event_name == 'pull_request' && format('latest-pr-{0}', github.event.pull_request.number) || 'latest' }}
     permissions:
       contents: read
       packages: write
