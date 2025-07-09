@@ -1,0 +1,43 @@
+name: mcp-zettelkasten
+type: python
+version: 1.0.0
+description: "A Model Context Protocol server that implements the Zettelkasten knowledge management methodology with SQLite storage"
+base_image: ../base/Dockerfile.python
+entry_command: "python -m zettelkasten_mcp.main"
+author: "entanglr"
+repository: "https://github.com/entanglr/zettelkasten-mcp"
+
+environment:
+  - name: MCP_PORT
+    description: "Port for the MCP server to listen on"
+    default: "3000"
+    required: false
+    secret: false
+  - name: ZETTELKASTEN_NOTES_DIR
+    description: "Path to the directory where markdown notes are stored"
+    default: "/data/notes"
+    required: false
+    secret: false
+  - name: ZETTELKASTEN_DATABASE_PATH
+    description: "Path to the SQLite database file for indexing and efficient querying"
+    default: "/data/db/zettelkasten.db"
+    required: false
+    secret: false
+  - name: ZETTELKASTEN_LOG_LEVEL
+    description: "Logging level for the server (DEBUG, INFO, WARNING, ERROR)"
+    default: "INFO"
+    required: false
+    secret: false
+    
+resources:
+  cpu: 0.5  # Increased CPU for knowledge management operations
+  memory: 512  # Increased memory for SQLite operations and note processing
+  
+capabilities:
+  - "knowledge/create_note"
+  - "knowledge/link_notes"
+  - "knowledge/search_notes"
+  - "knowledge/explore_connections"
+  - "knowledge/synthesize_ideas"
+  - "storage/sqlite"
+  - "storage/markdown"
