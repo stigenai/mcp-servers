@@ -28,6 +28,19 @@
         "memory": 512
       }
     },
+    "zettelkasten": {
+      "name": "Zettelkasten Knowledge Management",
+      "description": "Implements the Zettelkasten methodology with SQLite storage for knowledge management",
+      "type": "python",
+      "image": "ghcr.io/stigenai/mcp-zettelkasten:latest",
+      "configPath": "python/zettelkasten/config.yml",
+      "repository": "https://github.com/entanglr/zettelkasten-mcp",
+      "supported": true,
+      "defaultResources": {
+        "cpu": 0.5,
+        "memory": 512
+      }
+    },
     "custom": {
       "name": "Custom Docker Image",
       "description": "Bring your own Docker container",
