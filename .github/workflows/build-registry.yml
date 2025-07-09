@@ -53,6 +53,7 @@ jobs:
           echo "Registry version: $VERSION"
           
       - name: Build and push registry image
+        id: push
         uses: docker/build-push-action@v6
         with:
           context: servers
