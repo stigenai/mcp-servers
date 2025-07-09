@@ -77,10 +77,10 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:nightly-${{ steps.timestamp.outputs.date }}${{ inputs.image_tag_suffix }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') || (github.event_name == 'workflow_call' && inputs.push_images) }}
+          push: ${{ inputs.push_images != 'false' }}
           
       - name: Run Trivy vulnerability scanner
-        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') || (github.event_name == 'workflow_call' && inputs.push_images) }}
+        if: ${{ inputs.push_images != 'false' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
@@ -91,7 +91,7 @@ jobs:
           ignore-unfixed: true
           
       - name: Upload Trivy scan results to GitHub Security tab
-        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_images != 'false') || (github.event_name == 'workflow_call' && inputs.push_images) }}
+        if: ${{ inputs.push_images != 'false' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results-${{ matrix.type }}.sarif'
