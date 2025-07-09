@@ -113,7 +113,8 @@ jobs:
       
       - name: Update registry timestamp
         run: |
-          jq '.updated = now | strftime("%Y-%m-%dT%H:%M:%SZ")' servers/registry.json > servers/registry.json.tmp
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          jq --arg ts "$TIMESTAMP" '.updated = $ts' servers/registry.json > servers/registry.json.tmp
           mv servers/registry.json.tmp servers/registry.json
           
       - name: Commit registry update
