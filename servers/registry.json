@@ -13,7 +13,9 @@
       "defaultResources": {
         "cpu": 0.25,
         "memory": 256
-      }
+      },
+      "gitCommit": null,
+      "buildDate": null
     },
     "playwright": {
       "name": "Playwright Browser Automation",
@@ -26,7 +28,9 @@
       "defaultResources": {
         "cpu": 0.5,
         "memory": 512
-      }
+      },
+      "gitCommit": null,
+      "buildDate": null
     },
     "zettelkasten": {
       "name": "Zettelkasten Knowledge Management",
@@ -39,7 +43,9 @@
       "defaultResources": {
         "cpu": 0.5,
         "memory": 512
-      }
+      },
+      "gitCommit": null,
+      "buildDate": null
     },
     "custom": {
       "name": "Custom Docker Image",

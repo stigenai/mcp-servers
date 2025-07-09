@@ -1,0 +1,239 @@
+name: Build MCP Servers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/mcp-
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.changes.outputs.servers }}
+      base-changed: ${{ steps.changes.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          json: true
+          files_yaml: |
+            base:
+              - servers/python/base/**
+              - servers/node/base/**
+            time:
+              - servers/python/time/**
+            playwright:
+              - servers/node/playwright/**
+            zettelkasten:
+              - servers/python/zettelkasten/**
+      
+      - name: Determine servers to build
+        id: changes
+        run: |
+          # Check if base images changed
+          if [ "${{ steps.changed-files.outputs.base_any_changed }}" == "true" ]; then
+            echo "base=true" >> $GITHUB_OUTPUT
+            # If base changed, rebuild all servers
+            SERVERS='["time", "playwright", "zettelkasten"]'
+          else
+            # Build only changed servers
+            SERVERS='[]'
+            
+            if [ "${{ steps.changed-files.outputs.time_any_changed }}" == "true" ]; then
+              SERVERS=$(echo $SERVERS | jq '. += ["time"]')
+            fi
+            
+            if [ "${{ steps.changed-files.outputs.playwright_any_changed }}" == "true" ]; then
+              SERVERS=$(echo $SERVERS | jq '. += ["playwright"]')
+            fi
+            
+            if [ "${{ steps.changed-files.outputs.zettelkasten_any_changed }}" == "true" ]; then
+              SERVERS=$(echo $SERVERS | jq '. += ["zettelkasten"]')
+            fi
+          fi
+          
+          echo "servers=$SERVERS" >> $GITHUB_OUTPUT
+          echo "Servers to build: $SERVERS"
+
+  build-base:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.base-changed == 'true'
+    uses: ./.github/workflows/build-base-images.yml
+    with:
+      push_images: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      image_tag_suffix: ${{ github.event_name == 'pull_request' && format('-pr-{0}', github.event.pull_request.number) || '' }}
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+    secrets: inherit
+
+  build-servers:
+    needs: [detect-changes, build-base]
+    if: always() && needs.detect-changes.outputs.servers != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        server: ${{ fromJson(needs.detect-changes.outputs.servers) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get server metadata
+        id: meta
+        run: |
+          # Get server info from registry
+          CONFIG_PATH=$(jq -r ".servers.${{ matrix.server }}.configPath" servers/registry.json)
+          TYPE=$(jq -r ".servers.${{ matrix.server }}.type" servers/registry.json)
+          
+          # Get version from config
+          VERSION=$(grep "version:" "servers/$CONFIG_PATH" | awk '{print $2}')
+          
+          # Get git commit for this server's directory
+          SERVER_DIR="servers/$TYPE/${{ matrix.server }}"
+          GIT_COMMIT=$(git log -1 --format=%h -- "$SERVER_DIR")
+          GIT_COMMIT_FULL=$(git log -1 --format=%H -- "$SERVER_DIR")
+          
+          # Get current date
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "config_path=$CONFIG_PATH" >> $GITHUB_OUTPUT
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "git_commit=$GIT_COMMIT" >> $GITHUB_OUTPUT
+          echo "git_commit_full=$GIT_COMMIT_FULL" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+          
+          echo "Building ${{ matrix.server }} v$VERSION (commit: $GIT_COMMIT)"
+      
+      - name: Check if rebuild needed
+        id: check-rebuild
+        run: |
+          # Get the last built commit from registry
+          LAST_COMMIT=$(jq -r ".servers.${{ matrix.server }}.gitCommit" servers/registry.json)
+          
+          if [ "$LAST_COMMIT" == "${{ steps.meta.outputs.git_commit_full }}" ] && [ "${{ needs.detect-changes.outputs.base-changed }}" != "true" ]; then
+            echo "No changes detected for ${{ matrix.server }}, skipping build"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected, rebuilding ${{ matrix.server }}"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Build and push server image
+        if: steps.check-rebuild.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}
+          file: servers/${{ steps.meta.outputs.type }}/${{ matrix.server }}/Dockerfile
+          build-args: |
+            BASE_IMAGE_TAG=${{ needs.build-base.result == 'success' && github.event_name == 'pull_request' && format('latest-pr-{0}', github.event.pull_request.number) || 'latest' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:${{ steps.meta.outputs.git_commit }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.git_commit_full }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      
+      - name: Update registry with build info
+        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # Update registry with git commit and build date
+          jq --arg server "${{ matrix.server }}" \
+             --arg commit "${{ steps.meta.outputs.git_commit_full }}" \
+             --arg date "${{ steps.meta.outputs.build_date }}" \
+             '.servers[$server].gitCommit = $commit | .servers[$server].buildDate = $date' \
+             servers/registry.json > servers/registry.json.tmp
+          mv servers/registry.json.tmp servers/registry.json
+      
+      - name: Run Trivy vulnerability scanner
+        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
+          scan-type: 'image'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+      
+      - name: Upload Trivy scan results
+        if: steps.check-rebuild.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  commit-registry:
+    needs: build-servers
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      
+      - name: Pull latest changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git pull origin main
+      
+      - name: Check for registry changes
+        id: check-changes
+        run: |
+          if git diff --exit-code servers/registry.json; then
+            echo "No registry changes to commit"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Registry has changes"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit registry updates
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'servers/registry.json'
+          message: 'chore: update registry with build info [skip ci]'
+          default_author: github_actions

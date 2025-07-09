@@ -44,9 +44,14 @@ fi
 VERSION=$(grep "version:" "../servers/$CONFIG_PATH" | awk '{print $2}')
 SERVER_DIR=$(dirname "../servers/$CONFIG_PATH")
 
+# Get git commit for this server
+GIT_COMMIT=$(git -C .. log -1 --format=%h -- "servers/$TYPE/$SERVER")
+GIT_COMMIT_FULL=$(git -C .. log -1 --format=%H -- "servers/$TYPE/$SERVER")
+
 echo -e "${GREEN}Building $SERVER server...${NC}"
 echo "Type: $TYPE"
 echo "Version: $VERSION"
+echo "Git commit: $GIT_COMMIT"
 echo "Directory: $SERVER_DIR"
 
 # Build base image first if needed
@@ -63,6 +68,9 @@ echo -e "${GREEN}Building $SERVER image...${NC}"
 docker build \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION" \
     -t "$REGISTRY/$IMAGE_PREFIX$SERVER:latest" \
+    -t "$REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT" \
+    --label "org.opencontainers.image.revision=$GIT_COMMIT_FULL" \
+    --label "org.opencontainers.image.created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     -f "$SERVER_DIR/Dockerfile" \
     "$SERVER_DIR"
 
@@ -70,11 +78,25 @@ echo -e "${GREEN}Successfully built $SERVER server${NC}"
 echo "Tagged as:"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
 echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:latest"
+echo "  - $REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT"
 
 # Push if requested
 if [ "$2" == "push" ]; then
     echo -e "${YELLOW}Pushing images...${NC}"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$VERSION"
     docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:latest"
+    docker push "$REGISTRY/$IMAGE_PREFIX$SERVER:$GIT_COMMIT"
     echo -e "${GREEN}Successfully pushed images${NC}"
+    
+    # Update registry with build info
+    echo -e "${YELLOW}Updating registry...${NC}"
+    BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    cd ..
+    jq --arg server "$SERVER" \
+       --arg commit "$GIT_COMMIT_FULL" \
+       --arg date "$BUILD_DATE" \
+       '.servers[$server].gitCommit = $commit | .servers[$server].buildDate = $date' \
+       servers/registry.json > servers/registry.json.tmp
+    mv servers/registry.json.tmp servers/registry.json
+    echo -e "${GREEN}Registry updated${NC}"
 fi
