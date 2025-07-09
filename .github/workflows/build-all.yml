@@ -108,7 +108,7 @@ jobs:
           
       - name: Run Trivy vulnerability scanner
         if: github.event_name == 'push' || inputs.push_images == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}${{ matrix.server }}:latest
           scan-type: 'image'
