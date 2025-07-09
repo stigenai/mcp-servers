@@ -2,6 +2,7 @@ name: Build MCP Servers
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -37,30 +38,60 @@ jobs:
               - servers/node/playwright/**
             zettelkasten:
               - servers/python/zettelkasten/**
+            registry:
+              - servers/registry.json
       
       - name: Determine servers to build
         id: changes
         run: |
+          # Get all supported servers from registry
+          ALL_SERVERS=$(jq -r '.servers | to_entries[] | select(.value.supported == true) | .key' servers/registry.json | jq -R -s -c 'split("\n")[:-1]')
+          echo "All supported servers: $ALL_SERVERS"
+          
           # Check if base images changed
           if [ "${{ steps.changed-files.outputs.base_any_changed }}" == "true" ]; then
             echo "base=true" >> $GITHUB_OUTPUT
             # If base changed, rebuild all servers
-            SERVERS='["time", "playwright", "zettelkasten"]'
+            SERVERS=$ALL_SERVERS
           else
             # Build only changed servers
             SERVERS='[]'
             
+            # Check if registry changed (MCP commits updated)
+            if [ "${{ steps.changed-files.outputs.registry_any_changed }}" == "true" ]; then
+              echo "Registry changed, checking for MCP commit updates..."
+              
+              # Get previous and current registry contents
+              git show HEAD^:servers/registry.json > /tmp/registry_old.json
+              cp servers/registry.json /tmp/registry_new.json
+              
+              # Check each server for commit changes
+              for server in $(echo $ALL_SERVERS | jq -r '.[]'); do
+                OLD_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_old.json)
+                NEW_COMMIT=$(jq -r ".servers.$server.gitCommit // \"null\"" /tmp/registry_new.json)
+                
+                if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+                  echo "MCP commit changed for $server: $OLD_COMMIT -> $NEW_COMMIT"
+                  SERVERS=$(echo $SERVERS | jq --arg server "$server" '. += [$server]')
+                fi
+              done
+            fi
+            
+            # Check for direct file changes using the outputs
             if [ "${{ steps.changed-files.outputs.time_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["time"]')
+              SERVERS=$(echo $SERVERS | jq '. += ["time"]' | jq 'select(. != null)')
             fi
             
             if [ "${{ steps.changed-files.outputs.playwright_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["playwright"]')
+              SERVERS=$(echo $SERVERS | jq '. += ["playwright"]' | jq 'select(. != null)')
             fi
             
             if [ "${{ steps.changed-files.outputs.zettelkasten_any_changed }}" == "true" ]; then
-              SERVERS=$(echo $SERVERS | jq '. += ["zettelkasten"]')
+              SERVERS=$(echo $SERVERS | jq '. += ["zettelkasten"]' | jq 'select(. != null)')
             fi
+            
+            # Remove duplicates
+            SERVERS=$(echo $SERVERS | jq 'unique')
           fi
           
           echo "servers=$SERVERS" >> $GITHUB_OUTPUT
