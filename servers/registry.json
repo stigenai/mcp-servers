@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2025-07-14T12:38:56Z",
+  "updated": "2025-07-14T18:28:15Z",
   "servers": {
     "time": {
       "name": "Time Server",
@@ -14,8 +14,8 @@
         "cpu": 0.25,
         "memory": 256
       },
-      "gitCommit": "cd88954e18f164bf6e5730ce142df8f012c7c2a6",
-      "lastSync": "2025-07-14T12:38:56Z",
+      "gitCommit": "b64c0b2926c80f4ee12b3f6b776ad2667cbcb6ef",
+      "lastSync": "2025-07-14T18:28:15Z",
       "releaseVersion": "2025.7.1"
     },
     "playwright": {
@@ -30,9 +30,9 @@
         "cpu": 0.5,
         "memory": 512
       },
-      "gitCommit": "841bb417d1cb15ad31a29ce270b46c145fd71a48",
-      "lastSync": "2025-07-14T12:38:56Z",
-      "releaseVersion": "v0.0.29"
+      "gitCommit": "c5a2324aaf1af574ad21179a2f8c0bc71a29c5df",
+      "lastSync": "2025-07-14T18:28:15Z",
+      "releaseVersion": "v0.0.30"
     },
     "zettelkasten": {
       "name": "Zettelkasten Knowledge Management",
@@ -47,7 +47,7 @@
         "memory": 512
       },
       "gitCommit": "0e674eabf6c50e8edffa0fdbee49b68ca5a11b80",
-      "lastSync": "2025-07-14T12:38:56Z",
+      "lastSync": "2025-07-14T18:28:15Z",
       "releaseVersion": "v1.2.1"
     },
     "custom": {
