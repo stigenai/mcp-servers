@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2025-08-05T06:08:03Z",
+  "updated": "2025-08-05T12:08:50Z",
   "servers": {
     "time": {
       "name": "Time Server",
@@ -15,8 +15,8 @@
         "memory": 256
       },
       "gitCommit": "2b041eef88a386dca3d8555384baa2d7c6558597",
-      "lastSync": "2025-08-05T06:08:03Z",
-      "releaseVersion": "2025.7.1"
+      "lastSync": "2025-08-05T12:08:50Z",
+      "releaseVersion": "2025.8.4"
     },
     "playwright": {
       "name": "Playwright Browser Automation",
@@ -31,7 +31,7 @@
         "memory": 512
       },
       "gitCommit": "3f6837baa934e53ad8c747493219ac7d9e380f8e",
-      "lastSync": "2025-08-05T06:08:03Z",
+      "lastSync": "2025-08-05T12:08:50Z",
       "releaseVersion": "v0.0.32"
     },
     "zettelkasten": {
@@ -47,7 +47,7 @@
         "memory": 512
       },
       "gitCommit": "0e674eabf6c50e8edffa0fdbee49b68ca5a11b80",
-      "lastSync": "2025-08-05T06:08:03Z",
+      "lastSync": "2025-08-05T12:08:50Z",
       "releaseVersion": "v1.2.1"
     },
     "custom": {
