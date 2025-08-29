@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2025-08-28T18:05:50Z",
+  "updated": "2025-08-29T00:18:49Z",
   "servers": {
     "time": {
       "name": "Time Server",
@@ -14,9 +14,9 @@
         "cpu": 0.25,
         "memory": 256
       },
-      "gitCommit": "null",
-      "lastSync": "2025-08-28T18:05:50Z",
-      "releaseVersion": "null"
+      "gitCommit": "60eb7c28ad43403f99197d44712bb62aa62937d3",
+      "lastSync": "2025-08-29T00:18:49Z",
+      "releaseVersion": "2025.8.4"
     },
     "playwright": {
       "name": "Playwright Browser Automation",
@@ -30,9 +30,9 @@
         "cpu": 0.5,
         "memory": 512
       },
-      "gitCommit": "null",
-      "lastSync": "2025-08-28T18:05:50Z",
-      "releaseVersion": "null"
+      "gitCommit": "51ab77e04e239c0422a47624b90e6d585cab56e8",
+      "lastSync": "2025-08-29T00:18:49Z",
+      "releaseVersion": "v0.0.35"
     },
     "zettelkasten": {
       "name": "Zettelkasten Knowledge Management",
@@ -46,9 +46,9 @@
         "cpu": 0.5,
         "memory": 512
       },
-      "gitCommit": "null",
-      "lastSync": "2025-08-28T18:05:50Z",
-      "releaseVersion": "null"
+      "gitCommit": "0e674eabf6c50e8edffa0fdbee49b68ca5a11b80",
+      "lastSync": "2025-08-29T00:18:49Z",
+      "releaseVersion": "v1.2.1"
     },
     "custom": {
       "name": "Custom Docker Image",
