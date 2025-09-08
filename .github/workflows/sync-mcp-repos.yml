@@ -183,7 +183,7 @@ jobs:
       
       - name: Trigger builds if commits changed
         if: steps.check-changes.outputs.changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.actions.createWorkflowDispatch({
