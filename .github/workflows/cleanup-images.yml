@@ -16,7 +16,7 @@ jobs:
     outputs:
       packages: ${{ steps.packages.outputs.list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Get package list from registry
         id: packages
