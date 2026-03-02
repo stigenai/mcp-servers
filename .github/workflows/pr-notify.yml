@@ -1,0 +1,21 @@
+name: PR Review Notification
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: "!github.event.pull_request.draft"
+    steps:
+      - uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.FLEET_ENGINEERING_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":mag: *PR Review Needed*
+<${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>
+Repo: `${{ github.repository }}` | Author: ${{ github.event.pull_request.user.login }} | Files: ${{ github.event.pull_request.changed_files }}"
+            }
