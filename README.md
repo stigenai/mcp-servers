@@ -142,3 +142,9 @@ To add a new MCP server:
 ## License
 
 [Add license information]
+
+## Changelog and release notes
+
+- User-facing or configuration-impacting changes should include an entry under `## [Unreleased]` in [CHANGELOG.md](./CHANGELOG.md).
+- Group entries by type (Added, Changed, Fixed, Removed, Security) to keep release notes readable.
+- When cutting a release, move unreleased entries into a versioned section.
