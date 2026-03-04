@@ -58,11 +58,14 @@ Users can also bring their own Docker containers by specifying `serverType: "cus
 
 ## GitHub Actions
 
-The repository includes GitHub Actions workflows for automated building:
+The repository includes GitHub Actions workflows for validation, image builds, and registry publishing:
 
-- **build-all.yml**: Builds all supported servers on push to main
-- **build-python.yml**: Builds Python servers only
-- **build-node.yml**: Builds Node servers only
+- **build-servers.yml**: validates registry/config integrity and builds changed servers
+- **build-base-images.yml**: builds base images used by server builds
+- **build-registry.yml**: publishes the server registry artifact
+- **cleanup-images.yml**: removes stale image artifacts
+- **sync-mcp-repos.yml**: syncs MCP upstream commit references
+- **pr-notify.yml**: PR notification automation
 
 ## Server Configuration
 
@@ -133,11 +136,19 @@ This allows the orchestrator to:
 To add a new MCP server:
 
 1. Create a new directory under `servers/[type]/[name]`
-2. Add a `Dockerfile` 
+2. Add a `Dockerfile`
 3. Add a `config.yml`
 4. Update `servers/registry.json`
-5. Test locally with `./scripts/build.sh [name]`
-6. Submit a pull request
+5. Add a changelog entry in [`CHANGELOG.md`](CHANGELOG.md) for user-visible changes
+6. Test locally with `./scripts/build.sh [name]`
+7. Submit a pull request
+
+For release-note conventions, see [`docs/release/entry-process.md`](docs/release/entry-process.md).
+
+## Changelog
+
+- [CHANGELOG.md](CHANGELOG.md)
+- [Release Entry Process](docs/release/entry-process.md)
 
 ## License
 
