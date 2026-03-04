@@ -1,57 +1,86 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo -e "${GREEN}Testing MCP server configurations...${NC}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REGISTRY_PATH="${REPO_ROOT}/servers/registry.json"
 
-# Test registry JSON is valid
-echo -n "Checking registry.json... "
-if jq empty ../servers/registry.json > /dev/null 2>&1; then
-    echo -e "${GREEN}✓${NC}"
-else
-    echo -e "${RED}✗${NC}"
-    echo -e "${RED}Error: registry.json is not valid JSON${NC}"
-    exit 1
-fi
+fail() {
+  echo -e "${RED}✗ $1${NC}"
+  exit 1
+}
 
-# Test all config files
-echo -e "\n${YELLOW}Checking server configurations...${NC}"
-SERVERS=$(jq -r '.servers | to_entries[] | select(.value.supported == true) | .key' ../servers/registry.json)
+pass() {
+  echo -e "${GREEN}✓ $1${NC}"
+}
 
-for SERVER in $SERVERS; do
-    CONFIG_PATH=$(jq -r ".servers.$SERVER.configPath" ../servers/registry.json)
-    echo -n "Checking $SERVER config... "
-    
-    if [ ! -f "../servers/$CONFIG_PATH" ]; then
-        echo -e "${RED}✗ (file not found)${NC}"
-        continue
-    fi
-    
-    # Check YAML is valid (basic check)
-    if grep -E "^name:|^type:|^version:" "../servers/$CONFIG_PATH" > /dev/null; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ (missing required fields)${NC}"
-    fi
+echo -e "${GREEN}Validating MCP server registry/config integrity...${NC}"
+
+# Tooling checks
+command -v jq >/dev/null 2>&1 || fail "jq is required but not installed"
+
+# Registry validity checks
+echo -n "Checking registry JSON syntax... "
+jq empty "${REGISTRY_PATH}" >/dev/null 2>&1 || fail "servers/registry.json is not valid JSON"
+pass "valid JSON"
+
+SERVERS=$(jq -r '.servers | to_entries[] | select(.value.supported == true) | .key' "${REGISTRY_PATH}")
+[ -n "${SERVERS}" ] || fail "No supported servers found in registry"
+
+echo -e "\n${YELLOW}Checking supported server metadata...${NC}"
+for SERVER in ${SERVERS}; do
+  echo -n "Validating ${SERVER} metadata... "
+
+  TYPE=$(jq -r ".servers.${SERVER}.type // empty" "${REGISTRY_PATH}")
+  CONFIG_PATH=$(jq -r ".servers.${SERVER}.configPath // empty" "${REGISTRY_PATH}")
+  IMAGE=$(jq -r ".servers.${SERVER}.image // empty" "${REGISTRY_PATH}")
+  GIT_COMMIT=$(jq -r ".servers.${SERVER}.gitCommit // empty" "${REGISTRY_PATH}")
+  SUPPORTED=$(jq -r ".servers.${SERVER}.supported" "${REGISTRY_PATH}")
+
+  [ -n "${TYPE}" ] || fail "${SERVER}: missing required key 'type'"
+  [ -n "${CONFIG_PATH}" ] || fail "${SERVER}: missing required key 'configPath'"
+  [ -n "${IMAGE}" ] || fail "${SERVER}: missing required key 'image'"
+  [ -n "${GIT_COMMIT}" ] || fail "${SERVER}: missing required key 'gitCommit'"
+  [ "${SUPPORTED}" = "true" ] || fail "${SERVER}: expected 'supported=true' for validated entries"
+
+  if ! [[ "${GIT_COMMIT}" =~ ^[a-f0-9]{40}$ ]]; then
+    fail "${SERVER}: gitCommit must be a 40-character lowercase SHA"
+  fi
+
+  pass "${SERVER} metadata valid"
 done
 
-# Test Dockerfiles exist
+echo -e "\n${YELLOW}Checking server config files...${NC}"
+for SERVER in ${SERVERS}; do
+  CONFIG_PATH=$(jq -r ".servers.${SERVER}.configPath" "${REGISTRY_PATH}")
+  FULL_CONFIG_PATH="${REPO_ROOT}/servers/${CONFIG_PATH}"
+
+  echo -n "Checking ${SERVER} config... "
+  [ -f "${FULL_CONFIG_PATH}" ] || fail "${SERVER}: config file not found at servers/${CONFIG_PATH}"
+
+  grep -Eq '^name:' "${FULL_CONFIG_PATH}" || fail "${SERVER}: config missing required field 'name'"
+  grep -Eq '^type:' "${FULL_CONFIG_PATH}" || fail "${SERVER}: config missing required field 'type'"
+  grep -Eq '^version:' "${FULL_CONFIG_PATH}" || fail "${SERVER}: config missing required field 'version'"
+
+  pass "${SERVER} config valid"
+done
+
 echo -e "\n${YELLOW}Checking Dockerfiles...${NC}"
-for SERVER in $SERVERS; do
-    CONFIG_PATH=$(jq -r ".servers.$SERVER.configPath" ../servers/registry.json)
-    SERVER_DIR=$(dirname "../servers/$CONFIG_PATH")
-    echo -n "Checking $SERVER Dockerfile... "
-    
-    if [ -f "$SERVER_DIR/Dockerfile" ]; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ (not found)${NC}"
-    fi
+for SERVER in ${SERVERS}; do
+  CONFIG_PATH=$(jq -r ".servers.${SERVER}.configPath" "${REGISTRY_PATH}")
+  SERVER_DIR="${REPO_ROOT}/servers/$(dirname "${CONFIG_PATH}")"
+  DOCKERFILE_PATH="${SERVER_DIR}/Dockerfile"
+
+  echo -n "Checking ${SERVER} Dockerfile... "
+  [ -f "${DOCKERFILE_PATH}" ] || fail "${SERVER}: Dockerfile not found at ${DOCKERFILE_PATH#${REPO_ROOT}/}"
+
+  pass "${SERVER} Dockerfile present"
 done
 
-echo -e "\n${GREEN}All tests passed!${NC}"
+echo -e "\n${GREEN}All validation checks passed.${NC}"

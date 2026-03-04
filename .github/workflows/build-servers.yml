@@ -34,6 +34,14 @@ env:
   IMAGE_PREFIX: ${{ github.repository_owner }}/mcp-
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run strict registry/config validator
+        run: ./scripts/test.sh
+
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
@@ -160,7 +168,7 @@ jobs:
           echo "Servers to build: $SERVERS"
 
   build-base:
-    needs: detect-changes
+    needs: [validate, detect-changes]
     if: needs.detect-changes.outputs.base-changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.build_base == true)
     uses: ./.github/workflows/build-base-images.yml
     with:
@@ -176,7 +184,7 @@ jobs:
     secrets: inherit
 
   build-servers:
-    needs: [detect-changes, build-base]
+    needs: [validate, detect-changes, build-base]
     if: always() && needs.detect-changes.outputs.servers != '[]'
     runs-on: ubuntu-latest
     permissions:

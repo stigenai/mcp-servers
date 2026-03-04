@@ -58,14 +58,14 @@ Users can also bring their own Docker containers by specifying `serverType: "cus
 
 ## GitHub Actions
 
-The repository includes GitHub Actions workflows for validation, image builds, and registry publishing:
+The repository includes GitHub Actions workflows for build, validation, sync, and maintenance:
 
-- **build-servers.yml**: validates registry/config integrity and builds changed servers
-- **build-base-images.yml**: builds base images used by server builds
-- **build-registry.yml**: publishes the server registry artifact
-- **cleanup-images.yml**: removes stale image artifacts
-- **sync-mcp-repos.yml**: syncs MCP upstream commit references
-- **pr-notify.yml**: PR notification automation
+- **build-servers.yml**: Detects changed MCP servers, validates registry/config integrity, and builds changed server images (PR + push + manual)
+- **build-base-images.yml**: Builds shared Python/Node base images (scheduled + manual + reusable)
+- **build-registry.yml**: Builds and publishes the registry OCI image when registry metadata changes
+- **sync-mcp-repos.yml**: Periodically syncs upstream MCP commit/release metadata into `servers/registry.json`
+- **cleanup-images.yml**: Cleans up old container image tags in GHCR
+- **pr-notify.yml**: Sends Slack notifications for new ready-for-review PRs
 
 ## Server Configuration
 
