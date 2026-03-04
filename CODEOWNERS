@@ -1,0 +1,13 @@
+# Global fallback owner
+* @stigenai/nixfleet-sage
+
+# CI/dependency policy surfaces
+.github/workflows/* @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+.github/dependabot.yml @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+CONTRIBUTING.md @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+README.md @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+CHANGELOG.md @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+
+# Server/runtime surfaces
+servers/** @stigenai/nixfleet-sage @stigenai/nixfleet-axel
+scripts/** @stigenai/nixfleet-sage @stigenai/nixfleet-axel
