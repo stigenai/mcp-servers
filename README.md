@@ -130,6 +130,8 @@ This allows the orchestrator to:
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for dependency PR triage policy and contribution rules.
+
 To add a new MCP server:
 
 1. Create a new directory under `servers/[type]/[name]`
