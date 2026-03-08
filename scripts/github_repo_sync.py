@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -18,14 +17,22 @@ class RepoRef:
 
 
 def parse_repo_ref(url: str) -> Optional[RepoRef]:
-    m = re.search(r'github\.com/([^/]+)/([^/]+)', url)
-    if not m:
+    parsed = urllib.parse.urlsplit(url)
+    host = (parsed.hostname or '').lower()
+    if host not in {'github.com', 'www.github.com'}:
         return None
-    owner, repo = m.group(1), m.group(2).removesuffix('.git')
+
+    parts = [part for part in parsed.path.split('/') if part]
+    if len(parts) < 2:
+        return None
+
+    owner, repo = parts[0], parts[1].removesuffix('.git')
+    if not owner or not repo:
+        return None
+
     path = None
-    tm = re.search(r'/tree/[^/]+/(.+)$', url)
-    if tm:
-        path = tm.group(1)
+    if len(parts) >= 5 and parts[2] == 'tree':
+        path = '/'.join(parts[4:]) or None
     return RepoRef(owner=owner, repo=repo, path=path)
 
 

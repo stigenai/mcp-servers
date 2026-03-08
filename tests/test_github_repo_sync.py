@@ -20,6 +20,16 @@ class ParseRepoRefTests(unittest.TestCase):
         self.assertEqual(ref.repo, 'servers')
         self.assertEqual(ref.path, 'src/time')
 
+    def test_reject_non_github_host_containing_github_com(self):
+        self.assertIsNone(mod.parse_repo_ref('https://notgithub.com/stigenai/qdrant-mcp'))
+        self.assertIsNone(mod.parse_repo_ref('https://github.com.evil.example/stigenai/qdrant-mcp'))
+
+    def test_ignore_query_string_in_repo_ref(self):
+        ref = mod.parse_repo_ref('https://github.com/stigenai/qdrant-mcp?tab=readme-ov-file')
+        self.assertEqual(ref.owner, 'stigenai')
+        self.assertEqual(ref.repo, 'qdrant-mcp')
+        self.assertIsNone(ref.path)
+
 
 class CollectTests(unittest.TestCase):
     @mock.patch.object(mod, 'get_latest_release', return_value='v1.2.3')
