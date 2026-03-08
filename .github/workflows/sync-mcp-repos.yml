@@ -23,88 +23,14 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
       
       - name: Sync MCP repository commits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Syncing MCP repository commits..."
           SYNC_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           # Create a temporary file for the updated registry
           cp servers/registry.json servers/registry.json.tmp
-          
-          # Function to get latest commit from a GitHub repo
-          get_latest_commit() {
-            local repo=$1
-            local path=$2
-            
-            # Extract owner and repo name from URL
-            if [[ $repo =~ github\.com/([^/]+)/([^/]+) ]]; then
-              owner="${BASH_REMATCH[1]}"
-              repo_name="${BASH_REMATCH[2]}"
-              
-              # Remove .git suffix if present
-              repo_name="${repo_name%.git}"
-              
-              # Handle URLs with /tree/main/path
-              if [[ $repo =~ /tree/main/(.+)$ ]]; then
-                path="${BASH_REMATCH[1]}"
-                repo_url="https://github.com/$owner/$repo_name"
-              else
-                repo_url="$repo"
-              fi
-              
-              echo "Fetching commit for $owner/$repo_name${path:+ path: $path}" >&2
-              
-              # Use GitHub API to get the latest commit
-              if [ -n "$path" ]; then
-                # Get commit for specific path
-                commit=$(curl -s "https://api.github.com/repos/$owner/$repo_name/commits?path=$path&per_page=1" | jq -r '.[0].sha // empty')
-              else
-                # Get latest commit for entire repo
-                commit=$(curl -s "https://api.github.com/repos/$owner/$repo_name/commits?per_page=1" | jq -r '.[0].sha // empty')
-              fi
-              
-              if [ -n "$commit" ]; then
-                echo "$commit"
-              else
-                echo "null"
-              fi
-            else
-              echo "null"
-            fi
-          }
-          
-          # Function to get latest release version from a GitHub repo
-          get_latest_release() {
-            local repo=$1
-            
-            # Extract owner and repo name from URL
-            if [[ $repo =~ github\.com/([^/]+)/([^/]+) ]]; then
-              owner="${BASH_REMATCH[1]}"
-              repo_name="${BASH_REMATCH[2]}"
-              
-              # Remove .git suffix if present
-              repo_name="${repo_name%.git}"
-              
-              # Handle URLs with /tree/main/path
-              if [[ $repo =~ /tree/main/(.+)$ ]]; then
-                repo_url="https://github.com/$owner/$repo_name"
-              else
-                repo_url="$repo"
-              fi
-              
-              echo "Fetching latest release for $owner/$repo_name" >&2
-              
-              # Get latest release
-              release=$(curl -s "https://api.github.com/repos/$owner/$repo_name/releases/latest" | jq -r '.tag_name // empty')
-              
-              if [ -n "$release" ]; then
-                echo "$release"
-              else
-                echo "null"
-              fi
-            else
-              echo "null"
-            fi
-          }
           
           # Process each server dynamically from registry
           echo "Processing servers from registry..."
@@ -119,19 +45,28 @@ jobs:
             REPO_URL=$(jq -r ".servers.$server.repository" servers/registry.json)
             
             if [ "$REPO_URL" != "null" ] && [ -n "$REPO_URL" ]; then
-              # Get the latest commit
-              COMMIT=$(get_latest_commit "$REPO_URL")
+              SYNC_JSON=$(python3 scripts/github_repo_sync.py "$REPO_URL")
+              SKIP=$(echo "$SYNC_JSON" | jq -r '.skip')
+              REASON=$(echo "$SYNC_JSON" | jq -r '.reason // empty')
+              COMMIT=$(echo "$SYNC_JSON" | jq -r '.gitCommit // ""')
+              RELEASE=$(echo "$SYNC_JSON" | jq -r '.releaseVersion // ""')
+
+              if [ "$SKIP" = "true" ]; then
+                echo "Skipping $server ($REASON)"
+              else
+                echo "$server server commit: ${COMMIT:-null}, release: ${RELEASE:-null}"
+              fi
               
-              # Get the latest release version
-              RELEASE=$(get_latest_release "$REPO_URL")
-              
-              # Update the server's commit, release version and sync date
-              jq --arg server "$server" --arg commit "$COMMIT" --arg release "$RELEASE" --arg date "$SYNC_DATE" \
-                '.servers[$server].gitCommit = $commit | .servers[$server].releaseVersion = $release | .servers[$server].lastSync = $date' \
+              # Update the server's commit, release version and sync date.
+              # Archived/disabled repos are backfilled to null so downstream jobs stop considering stale values.
+              jq --arg server "$server" \
+                 --argjson sync "$SYNC_JSON" \
+                 --arg date "$SYNC_DATE" \
+                '.servers[$server].gitCommit = ($sync.gitCommit // null) |
+                 .servers[$server].releaseVersion = ($sync.releaseVersion // null) |
+                 .servers[$server].lastSync = $date' \
                 servers/registry.json.tmp > servers/registry.json.tmp2
               mv servers/registry.json.tmp2 servers/registry.json.tmp
-              
-              echo "$server server commit: $COMMIT, release: $RELEASE"
             else
               echo "Skipping $server - no repository URL"
             fi

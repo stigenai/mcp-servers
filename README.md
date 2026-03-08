@@ -63,7 +63,7 @@ The repository includes GitHub Actions workflows for build, validation, sync, an
 - **build-servers.yml**: Detects changed MCP servers, validates registry/config integrity, and builds changed server images (PR + push + manual)
 - **build-base-images.yml**: Builds shared Python/Node base images (scheduled + manual + reusable)
 - **build-registry.yml**: Builds and publishes the registry OCI image when registry metadata changes
-- **sync-mcp-repos.yml**: Periodically syncs upstream MCP commit/release metadata into `servers/registry.json`
+- **sync-mcp-repos.yml**: Periodically syncs upstream MCP commit/release metadata into `servers/registry.json` and ignores archived/disabled upstream GitHub repositories (backfilling stale commit/release metadata to `null`)
 - **cleanup-images.yml**: Cleans up old container image tags in GHCR
 - **pr-notify.yml**: Sends Slack notifications for new ready-for-review PRs
 

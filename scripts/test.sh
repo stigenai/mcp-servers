@@ -42,15 +42,23 @@ for SERVER in ${SERVERS}; do
   IMAGE=$(jq -r ".servers.${SERVER}.image // empty" "${REGISTRY_PATH}")
   GIT_COMMIT=$(jq -r ".servers.${SERVER}.gitCommit // empty" "${REGISTRY_PATH}")
   SUPPORTED=$(jq -r ".servers.${SERVER}.supported" "${REGISTRY_PATH}")
+  ARCHIVED=$(jq -r ".servers.${SERVER}.archived // false" "${REGISTRY_PATH}")
+  DISABLED=$(jq -r ".servers.${SERVER}.disabled // false" "${REGISTRY_PATH}")
+  IS_INACTIVE="false"
+  if [ "${ARCHIVED}" = "true" ] || [ "${DISABLED}" = "true" ]; then
+    IS_INACTIVE="true"
+  fi
 
   [ -n "${TYPE}" ] || fail "${SERVER}: missing required key 'type'"
   [ -n "${CONFIG_PATH}" ] || fail "${SERVER}: missing required key 'configPath'"
   [ -n "${IMAGE}" ] || fail "${SERVER}: missing required key 'image'"
-  [ -n "${GIT_COMMIT}" ] || fail "${SERVER}: missing required key 'gitCommit'"
   [ "${SUPPORTED}" = "true" ] || fail "${SERVER}: expected 'supported=true' for validated entries"
 
-  if ! [[ "${GIT_COMMIT}" =~ ^[a-f0-9]{40}$ ]]; then
-    fail "${SERVER}: gitCommit must be a 40-character lowercase SHA"
+  if [ "${IS_INACTIVE}" = "false" ]; then
+    [ -n "${GIT_COMMIT}" ] || fail "${SERVER}: missing required key 'gitCommit'"
+    if ! [[ "${GIT_COMMIT}" =~ ^[a-f0-9]{40}$ ]]; then
+      fail "${SERVER}: gitCommit must be a 40-character lowercase SHA"
+    fi
   fi
 
   pass "${SERVER} metadata valid"

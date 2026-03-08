@@ -32,6 +32,13 @@ if [ "$SUPPORTED" != "true" ]; then
     echo -e "${YELLOW}Warning: Server '$SERVER' is not marked as supported${NC}"
 fi
 
+ARCHIVED=$(echo "$SERVER_INFO" | jq -r '.archived // false')
+DISABLED=$(echo "$SERVER_INFO" | jq -r '.disabled // false')
+if [ "$ARCHIVED" = "true" ] || [ "$DISABLED" = "true" ]; then
+    echo -e "${YELLOW}Skipping build for '$SERVER': repository is archived or disabled upstream${NC}"
+    exit 0
+fi
+
 CONFIG_PATH=$(echo "$SERVER_INFO" | jq -r '.configPath')
 TYPE=$(echo "$SERVER_INFO" | jq -r '.type')
 
@@ -46,6 +53,13 @@ SERVER_DIR=$(dirname "../servers/$CONFIG_PATH")
 
 # Get MCP commit from registry
 MCP_COMMIT=$(echo "$SERVER_INFO" | jq -r '.gitCommit')
+
+# Check if MCP commit exists
+if [ "$MCP_COMMIT" == "null" ] || [ -z "$MCP_COMMIT" ]; then
+    echo -e "${RED}Error: No MCP commit found for $SERVER. Run sync-mcp-repos workflow first.${NC}"
+    exit 1
+fi
+
 MCP_COMMIT_SHORT="${MCP_COMMIT:0:7}"
 
 echo -e "${GREEN}Building $SERVER server...${NC}"
@@ -53,12 +67,6 @@ echo "Type: $TYPE"
 echo "Version: $VERSION"
 echo "MCP commit: $MCP_COMMIT_SHORT"
 echo "Directory: $SERVER_DIR"
-
-# Check if MCP commit exists
-if [ "$MCP_COMMIT" == "null" ] || [ -z "$MCP_COMMIT" ]; then
-    echo -e "${RED}Error: No MCP commit found for $SERVER. Run sync-mcp-repos workflow first.${NC}"
-    exit 1
-fi
 
 # Build base image first if needed
 if [ "$TYPE" == "python" ]; then
