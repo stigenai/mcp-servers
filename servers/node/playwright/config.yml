@@ -32,7 +32,28 @@ environment:
 resources:
   cpu: 0.5
   memory: 512
-  
+
+security:
+  # Block SSRF to internal networks, cloud metadata, and cluster services.
+  # Enforced at two layers:
+  #   1. Application: --blocked-origins flag on @playwright/mcp
+  #   2. Network: Kubernetes NetworkPolicy egress rules (network-policy.yml)
+  blockedNetworks:
+    - "10.0.0.0/8"        # RFC-1918
+    - "172.16.0.0/12"     # RFC-1918
+    - "192.168.0.0/16"    # RFC-1918
+    - "169.254.0.0/16"    # Link-local (AWS IMDS, Azure IMDS)
+    - "100.64.0.0/10"     # CGNAT / EKS pod CIDR
+    - "fd00::/8"          # IPv6 ULA
+    - "fe80::/10"         # IPv6 link-local
+  blockedDomains:
+    - "*.svc"
+    - "*.svc.cluster.local"
+    - "*.internal"
+    - "metadata.google.internal"
+  networkPolicy:
+    enabled: true
+
 capabilities:
   - "browser/navigate"
   - "browser/screenshot"

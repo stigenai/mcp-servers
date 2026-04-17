@@ -28,10 +28,12 @@ RUN echo '{"name":"playwright-mcp-server","version":"1.0.0","dependencies":{"@pl
 RUN cd /app && npm install --only=production && \
     npm cache clean --force
 
-# Create startup script
+# Create startup script with SSRF-blocking origins (STI-504).
+# --blocked-origins prevents browser/navigate to internal endpoints.
+# Defense-in-depth: NetworkPolicy (network-policy.yml) is the primary control.
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'cd /app' >> /app/start.sh && \
-    echo 'exec npx @playwright/mcp' >> /app/start.sh && \
+    echo 'exec npx @playwright/mcp --blocked-origins "http://169.254.169.254,http://[fd00::],http://metadata.google.internal,http://kubernetes.default.svc,http://kubernetes.default.svc.cluster.local"' >> /app/start.sh && \
     chmod +x /app/start.sh && \
     chown nodejs:nodejs /app/start.sh
 
