@@ -1,0 +1,44 @@
+# NetworkPolicy for playwright MCP server pods.
+# Blocks egress to internal/metadata networks to prevent SSRF.
+# Apply to the namespace where playwright pods run.
+#
+# STI-504: browser/navigate + browser/evaluate can reach internal endpoints
+# (AWS IMDS 169.254.169.254 -> IAM creds, kubernetes.default.svc, etc.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-playwright-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-playwright
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution (kube-dns)
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow external internet only — block all internal CIDRs.
+    # ipBlock.except denies the listed ranges; everything else is allowed.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8        # RFC-1918
+              - 172.16.0.0/12     # RFC-1918
+              - 192.168.0.0/16    # RFC-1918
+              - 169.254.0.0/16    # Link-local / AWS IMDS
+              - 100.64.0.0/10     # CGNAT / EKS pod CIDR
+        - ipBlock:
+            cidr: ::/0
+            except:
+              - fd00::/8          # IPv6 ULA
+              - fe80::/10         # IPv6 link-local
