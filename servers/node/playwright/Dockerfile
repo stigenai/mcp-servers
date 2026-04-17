@@ -22,7 +22,9 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 COPY config.yml /app/config.yml
 
 # Create package.json for better dependency management
-RUN echo '{"name":"playwright-mcp-server","version":"1.0.0","dependencies":{"@playwright/mcp":"latest"}}' > /app/package.json
+# STI-505: pin to specific version instead of :latest to prevent
+# auto-pulling unreviewed upstream changes.
+RUN echo '{"name":"playwright-mcp-server","version":"1.0.0","dependencies":{"@playwright/mcp":"0.0.70"}}' > /app/package.json
 
 # Install dependencies
 RUN cd /app && npm install --only=production && \

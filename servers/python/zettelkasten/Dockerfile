@@ -10,9 +10,13 @@ USER root
 # Install git for cloning the repository
 RUN apk add --no-cache git
 
-# Clone and install the zettelkasten MCP server
+# Clone and install the zettelkasten MCP server.
+# STI-505: pin to specific commit SHA to prevent supply chain attacks
+# via unreviewed upstream changes. Update this SHA deliberately after
+# reviewing upstream changes.
 RUN git clone https://github.com/entanglr/zettelkasten-mcp.git /tmp/zettelkasten-mcp && \
     cd /tmp/zettelkasten-mcp && \
+    git checkout 0e674eabf6c50e8edffa0fdbee49b68ca5a11b80 && \
     uv pip install --system . && \
     rm -rf /tmp/zettelkasten-mcp
 
