@@ -5,7 +5,7 @@ FROM ghcr.io/stigenai/mcp-python-base:${BASE_IMAGE_TAG}
 COPY config.yml /app/config.yml
 
 # Install mcp-server-time using uv
-RUN uv tool install mcp-server-time
+RUN uv tool install mcp-server-time==2026.1.26
 
 # Copy startup script
 COPY --chown=python:python start.sh /app/start.sh
