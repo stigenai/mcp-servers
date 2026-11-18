@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2026-11-18T12:09:14Z",
+  "updated": "2026-11-18T18:07:07Z",
   "servers": {
     "time": {
       "name": "Time Server",
@@ -15,7 +15,7 @@
         "memory": 256
       },
       "gitCommit": "97ed9ec74f370222d4ceec50380d06dff36ac4e5",
-      "lastSync": "2026-11-18T12:09:14Z",
+      "lastSync": "2026-11-18T18:07:07Z",
       "releaseVersion": "v2.5.0"
     },
     "playwright": {
@@ -30,8 +30,8 @@
         "cpu": 0.5,
         "memory": 512
       },
-      "gitCommit": "16347fa7f878b33442b4b9d5ed34b76a99a5266c",
-      "lastSync": "2026-11-18T12:09:14Z",
+      "gitCommit": "eb36463ee796ed71afd2c2cb1ec96d83770ed4df",
+      "lastSync": "2026-11-18T18:07:07Z",
       "releaseVersion": "v0.0.85"
     },
     "zettelkasten": {
@@ -47,7 +47,7 @@
         "memory": 512
       },
       "gitCommit": "0e674eabf6c50e8edffa0fdbee49b68ca5a11b80",
-      "lastSync": "2026-11-18T12:09:14Z",
+      "lastSync": "2026-11-18T18:07:07Z",
       "releaseVersion": "v1.2.1"
     },
     "custom": {
